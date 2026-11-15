@@ -1,0 +1,6 @@
+[workspace]
+resolver = "2"
+members = ["控件", "应用/ui", "应用/src-tauri"]
+
+[profile.release]
+opt-level = "s"

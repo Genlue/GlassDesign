@@ -1,0 +1,33 @@
+/* 由 scripts/build-glass.mjs 生成，请勿手改。
+   静态 SVG filter：位移 + 高光贴图在构建期算好，运行时没有 JavaScript。 */
+.c-capsule--round {
+  width: 34px;
+  height: 34px;
+  justify-content: center;
+  -webkit-backdrop-filter: blur(calc(var(--m-popover-blur) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-capsule-34);
+  backdrop-filter: blur(calc(var(--m-popover-blur) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-capsule-34);
+}
+
+.c-capsule[data-size="112"] {
+  width: 112px;
+  height: 34px;
+  justify-content: center;
+  -webkit-backdrop-filter: blur(calc(var(--m-popover-blur) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-capsule-112);
+  backdrop-filter: blur(calc(var(--m-popover-blur) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-capsule-112);
+}
+
+.c-capsule[data-size="180"] {
+  width: 180px;
+  height: 34px;
+  justify-content: center;
+  -webkit-backdrop-filter: blur(calc(var(--m-popover-blur) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-capsule-180);
+  backdrop-filter: blur(calc(var(--m-popover-blur) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-capsule-180);
+}
+
+.c-slider__thumb {
+  width: 24px;
+  height: 16px;
+  justify-content: center;
+  -webkit-backdrop-filter: blur(calc(var(--thumb-blur-px) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-thumb);
+  backdrop-filter: blur(calc(var(--thumb-blur-px) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-thumb);
+}

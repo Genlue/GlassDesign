@@ -1,0 +1,153 @@
+/* 由 scripts/build-optics.mjs 生成，请勿手改。
+   来源：scripts/glass/glass-schema.js 的 8 套默认参数。 */
+.c-glass-chrome {
+  --lg-band: 26;
+  --lg-amount: 15;
+  --lg-amount-k: 1.000;
+  --lg-depth: 0.6;
+  --lg-dispersion: 0;
+  --lg-vibrancy: 1.8;
+  --lg-coating: 0.46;
+  --lg-coating-color: rgb(var(--glass-rgb));
+  --lg-stroke-half: 0.5;
+  --lg-stroke-feather: 0.25;
+  --lg-stroke-alpha: 0.22;
+  --lg-falloff: 1;
+  --lg-light: 0;
+  --lg-sheen: 0.1;
+  --lg-sheen-depth: 7;
+  --glass-blur-k: 0.7;
+}
+
+.c-glass-panel {
+  --lg-band: 30;
+  --lg-amount: 18;
+  --lg-amount-k: 1.000;
+  --lg-depth: 0.6;
+  --lg-dispersion: 0;
+  --lg-vibrancy: 1.8;
+  --lg-coating: 0.58;
+  --lg-coating-color: rgb(var(--glass-rgb));
+  --lg-stroke-half: 0.5;
+  --lg-stroke-feather: 0.25;
+  --lg-stroke-alpha: 0.2;
+  --lg-falloff: 1;
+  --lg-light: 0;
+  --lg-sheen: 0.1;
+  --lg-sheen-depth: 7;
+  --glass-blur-k: 0.85;
+}
+
+.c-capsule {
+  --lg-band: 20;
+  --lg-amount: 12;
+  --lg-amount-k: 1.000;
+  --lg-depth: 0.6;
+  --lg-dispersion: 0;
+  --lg-vibrancy: 1.8;
+  --lg-coating: 0.3;
+  --lg-coating-color: rgb(var(--glass-rgb));
+  --lg-stroke-half: 0.8;
+  --lg-stroke-feather: 0.25;
+  --lg-stroke-alpha: 0.34;
+  --lg-falloff: 1;
+  --lg-light: 0;
+  --lg-sheen: 0.1;
+  --lg-sheen-depth: 7;
+  --glass-blur-k: 0.5;
+}
+
+.c-dock__pill {
+  --lg-band: 22;
+  --lg-amount: 13;
+  --lg-amount-k: 1.000;
+  --lg-depth: 0.6;
+  --lg-dispersion: 0;
+  --lg-vibrancy: 1.8;
+  --lg-coating: 0.52;
+  --lg-coating-color: rgb(var(--glass-rgb));
+  --lg-stroke-half: 0.7;
+  --lg-stroke-feather: 0.25;
+  --lg-stroke-alpha: 0.3;
+  --lg-falloff: 1;
+  --lg-light: 0;
+  --lg-sheen: 0.1;
+  --lg-sheen-depth: 7;
+  --glass-blur-k: 0.6;
+}
+
+.c-menu {
+  --lg-band: 24;
+  --lg-amount: 14;
+  --lg-amount-k: 1.000;
+  --lg-depth: 0.6;
+  --lg-dispersion: 0;
+  --lg-vibrancy: 1.8;
+  --lg-coating: 0.62;
+  --lg-coating-color: rgb(var(--glass-rgb));
+  --lg-stroke-half: 0.5;
+  --lg-stroke-feather: 0.25;
+  --lg-stroke-alpha: 0.2;
+  --lg-falloff: 1;
+  --lg-light: 0;
+  --lg-sheen: 0.1;
+  --lg-sheen-depth: 7;
+  --glass-blur-k: 0.7;
+}
+
+.c-toast {
+  --lg-band: 18;
+  --lg-amount: 11;
+  --lg-amount-k: 1.000;
+  --lg-depth: 0.6;
+  --lg-dispersion: 0;
+  --lg-vibrancy: 1.8;
+  --lg-coating: 0.36;
+  --lg-coating-color: rgb(var(--glass-rgb));
+  --lg-stroke-half: 0.6;
+  --lg-stroke-feather: 0.25;
+  --lg-stroke-alpha: 0.24;
+  --lg-falloff: 1;
+  --lg-light: 0;
+  --lg-sheen: 0.1;
+  --lg-sheen-depth: 7;
+  --glass-blur-k: 0.55;
+}
+
+.c-glass-sheet {
+  --lg-band: 32;
+  --lg-amount: 19;
+  --lg-amount-k: 1.000;
+  --lg-depth: 0.6;
+  --lg-dispersion: 0;
+  --lg-vibrancy: 1.8;
+  --lg-coating: 0.86;
+  --lg-coating-color: rgb(var(--glass-rgb));
+  --lg-stroke-half: 0.6;
+  --lg-stroke-feather: 0.25;
+  --lg-stroke-alpha: 0.24;
+  --lg-falloff: 1;
+  --lg-light: 0;
+  --lg-sheen: 0.1;
+  --lg-sheen-depth: 7;
+  --glass-blur-k: 0.9;
+}
+
+.c-slider__thumb {
+  --lg-band: 7.2;
+  --lg-amount: 3.2;
+  --lg-amount-k: 0.320;
+  --lg-depth: 0.6;
+  --lg-dispersion: 0;
+  --lg-vibrancy: 1;
+  --lg-coating: 0.34;
+  --lg-coating-color: rgb(var(--glass-rgb));
+  --lg-stroke-half: 0.8;
+  --lg-stroke-feather: 0.35;
+  --lg-stroke-alpha: 0;
+  --lg-falloff: 1;
+  --lg-light: 0;
+  --lg-sheen: 0.1;
+  --lg-sheen-depth: 7;
+  --glass-blur-k: 1;
+}

@@ -1,0 +1,5 @@
+/target
+/应用/ui/dist
+/.shots*
+/.tmp-*
+node_modules

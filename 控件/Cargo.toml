@@ -1,0 +1,15 @@
+[package]
+name = "glass-design"
+version = "0.1.0"
+edition = "2021"
+description = "GlassDesign：Tauri 2 + Leptos 的桌面控件库"
+license = "MIT"
+
+[dependencies]
+leptos = { version = "=0.8.23", features = ["csr"] }
+wasm-bindgen = "=0.2.130"
+js-sys = "0.3"
+web-sys = { version = "0.3", features = [
+  "Document", "Element", "Node", "Window", "HtmlElement", "HtmlInputElement",
+  "HtmlStyleElement", "Storage", "MediaQueryList", "CssStyleDeclaration",
+] }
