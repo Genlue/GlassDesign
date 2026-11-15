@@ -2,6 +2,7 @@ use leptos::html;
 use leptos::prelude::*;
 
 use crate::base::icon::{Icon, IconName};
+use crate::base::overlay::{OverlayHost, OverlayId, OverlayKind};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct SelectOption {
@@ -32,6 +33,9 @@ pub fn Select(
     let trigger_ref = NodeRef::<html::Button>::new();
     let menu_pos = RwSignal::new((0.0f64, 0.0f64, 0.0f64));
     let width = if width == 0 { 180 } else { width };
+    // 栈句柄与打开状态同步：z-index / Esc 由 host 决定，定位仍然自己做。
+    let host = OverlayHost::use_or_provide();
+    let layer = RwSignal::new(None::<OverlayId>);
     let options_for_menu = options.clone();
     let options_for_label = options.clone();
     let current_label = move || {
@@ -43,6 +47,42 @@ pub fn Select(
             .unwrap_or_default()
     };
     let has_value = move || !value.get().unwrap_or_default().is_empty();
+
+    // 关闭只有一条路：出栈 + 收起。点外、选中、Esc（host 回调）都走这里。
+    let close = move || {
+        if let Some(id) = layer.get_untracked() {
+            host.remove(id);
+            layer.set(None);
+        }
+        open.set(false);
+    };
+    let dismiss = Callback::new(move |_| close());
+
+    let open_menu = move || {
+        if layer.get_untracked().is_some() {
+            return;
+        }
+        if let Some(el) = trigger_ref.get() {
+            let r = el.get_bounding_client_rect();
+            menu_pos.set((r.left(), r.bottom() + 6.0, r.width()));
+        }
+        let id = host.push(OverlayKind::Menu, dismiss);
+        layer.set(Some(id));
+        open.set(true);
+    };
+
+    on_cleanup(move || {
+        if let Some(id) = layer.get_untracked() {
+            host.remove(id);
+        }
+    });
+
+    let menu_z = move || {
+        layer
+            .get()
+            .map(|id| host.z(id))
+            .unwrap_or(OverlayKind::Menu.base_z())
+    };
 
     let menu = move || {
         options_for_menu.iter().map(|opt| {
@@ -66,7 +106,7 @@ pub fn Select(
                         if let Some(cb) = on_change {
                             cb.run(opt_value.clone());
                         }
-                        open.set(false);
+                        close();
                     }
                 >
                     <span class="c-menu__check" data-role="menuitemradio">
@@ -89,21 +129,17 @@ pub fn Select(
                 style="width:100%;justify-content:space-between"
                 node_ref=trigger_ref
                 on:click=move |_| {
-                    let next = !open.get_untracked();
-                    if next {
-                        if let Some(el) = trigger_ref.get() {
-                            let r = el.get_bounding_client_rect();
-                            menu_pos.set((r.left(), r.bottom() + 6.0, r.width()));
-                        }
+                    if open.get_untracked() {
+                        close();
+                    } else {
+                        open_menu();
                     }
-                    open.set(next);
                 }
                 on:keydown=move |ev: web_sys::KeyboardEvent| {
-                    if ev.key() == "Escape" {
-                        open.set(false);
-                    } else if ev.key() == "ArrowDown" || ev.key() == "ArrowUp" {
+                    // Esc 交给 OverlayHost：输入法组合态、只关最上层都在那边处理。
+                    if ev.key() == "ArrowDown" || ev.key() == "ArrowUp" {
                         ev.prevent_default();
-                        open.set(true);
+                        open_menu();
                     }
                 }
             >
@@ -116,8 +152,12 @@ pub fn Select(
             </button>
 
             <div
-                style=move || if open.get() { "position:fixed;inset:0;z-index:899" } else { "display:none" }
-                on:click=move |_| open.set(false)
+                style=move || if open.get() {
+                    format!("position:fixed;inset:0;z-index:{}", menu_z() - 1)
+                } else {
+                    "display:none".to_string()
+                }
+                on:click=move |_| close()
             ></div>
             <div
                 class="c-menu"
@@ -125,7 +165,7 @@ pub fn Select(
                 tabindex="-1"
                 style=move || if open.get() {
                     let (l, t, w) = menu_pos.get();
-                    format!("position:fixed;left:{l}px;top:{t}px;width:{w}px;z-index:900;min-width:0")
+                    format!("position:fixed;left:{l}px;top:{t}px;width:{w}px;z-index:{};min-width:0", menu_z())
                 } else {
                     "display:none".to_string()
                 }

@@ -1,11 +1,15 @@
 use leptos::prelude::*;
 
 use crate::base::icon::{Icon, IconName};
+use crate::base::overlay::OverlayHost;
 use crate::widgets::toast::ToastHost;
 
 /// 应用外壳。`.l-app` 负责圆角、外影与两栏布局。
 #[component]
 pub fn AppShell(children: Children) -> impl IntoView {
+    // 浮层栈在根上 provide 一次：所有页面的 Dialog/Select 共用一条栈，
+    // 否则各自 use_or_provide 会拿到互不相见的两个 host。不产生 DOM。
+    let _host = OverlayHost::use_or_provide();
     view! { <div class="l-app">{children()}<ToastHost /></div> }
 }
 

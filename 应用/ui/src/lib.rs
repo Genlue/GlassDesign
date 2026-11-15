@@ -25,8 +25,11 @@ fn App() -> impl IntoView {
 
     let page = move || match section.get().as_str() {
         "表单" => view! { <FormPage /> }.into_any(),
+        "外观" => view! { <AppearancePage /> }.into_any(),
         "数据" => view! { <DataPage /> }.into_any(),
         "导航" => view! { <NavPage /> }.into_any(),
+        "面板" => view! { <PanelsPage /> }.into_any(),
+        "工具栏" => view! { <ToolbarPage /> }.into_any(),
         "浮层" => view! { <OverlayPage /> }.into_any(),
         _ => view! { <BasicPage /> }.into_any(),
     };
@@ -53,12 +56,21 @@ fn App() -> impl IntoView {
                     <NavItem icon=IconName::SLIDERS label="表单"
                         selected=Signal::derive(move || section.get() == "表单")
                         on_click=Callback::new(move |_| section.set("表单".to_string())) />
+                    <NavItem icon=IconName::PALETTE label="外观"
+                        selected=Signal::derive(move || section.get() == "外观")
+                        on_click=Callback::new(move |_| section.set("外观".to_string())) />
                     <NavItem icon=IconName::GRID_2X2 label="数据"
                         selected=Signal::derive(move || section.get() == "数据")
                         on_click=Callback::new(move |_| section.set("数据".to_string())) />
                     <NavItem icon=IconName::COMPASS label="导航"
                         selected=Signal::derive(move || section.get() == "导航")
                         on_click=Callback::new(move |_| section.set("导航".to_string())) />
+                    <NavItem icon=IconName::PANEL_RIGHT label="面板"
+                        selected=Signal::derive(move || section.get() == "面板")
+                        on_click=Callback::new(move |_| section.set("面板".to_string())) />
+                    <NavItem icon=IconName::SQUARE_DASHED label="工具栏"
+                        selected=Signal::derive(move || section.get() == "工具栏")
+                        on_click=Callback::new(move |_| section.set("工具栏".to_string())) />
                     <NavItem icon=IconName::LAYERS label="浮层"
                         selected=Signal::derive(move || section.get() == "浮层")
                         on_click=Callback::new(move |_| section.set("浮层".to_string())) />

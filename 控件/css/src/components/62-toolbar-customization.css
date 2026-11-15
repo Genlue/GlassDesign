@@ -249,3 +249,25 @@
 .c-toolbarcustom__close:active {
   background: var(--surface-control-active);
 }
+
+/* ==========================================================================
+   62-补 · 锁定行（P3-E3 追加，ToolbarCustomization 用）
+   —— 锁定 = 永远可见、不能隐藏、不参与重排。上面那套是旧库「必需项」的
+      写法（真 checkbox + :disabled），新控件复用 Switch 与手柄按钮，
+      所以补两条：
+      ① 锁定行不渲染手柄按钮（不可拖），但为了左缘对齐仍占一个手柄位 ——
+         那个占位元素不能有「抓取」光标，否则读起来像「能拖但拖不动」；
+      ② Switch 没有 disabled 变体（不改 widget 契约），只能按行标记压暗
+         并挡住指针；语义上「锁定」由行上的 .__req 文案与 title 交代。
+   ========================================================================== */
+
+.c-toolbarcustom__row[data-locked="1"] > .c-toolbarcustom__grip {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.c-toolbarcustom__row[data-locked="1"] .c-switch {
+  opacity: 0.45;
+  pointer-events: none;
+}
+

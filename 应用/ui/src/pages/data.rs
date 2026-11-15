@@ -42,6 +42,121 @@ pub fn DataPage() -> impl IntoView {
         TableColumn::new("count", "数量").right(),
     ];
 
+    /* ---------------------------------------------------- P3-C 数据类样例 */
+
+    let table_columns = vec![
+        DataColumn::new("name", "名称").width(180.0).sortable(),
+        // 这一列故意把 min_width 设得比初始宽度还大：拖动时能直观看到兜底。
+        DataColumn::new("kind", "类型").width(120.0).min_width(140.0),
+        DataColumn::new("size", "大小 (KB)")
+            .width(96.0)
+            .right()
+            .sortable(),
+        DataColumn::new("modified", "修改时间").width(150.0),
+        DataColumn::new("state", "状态").width(90.0),
+    ];
+    let table_rows: Vec<DataTableRow> = (1..=16)
+        .map(|i| {
+            let kind = ["设计", "文档", "图片"][i % 3];
+            let state = ["已发布", "草稿", "归档"][i % 3];
+            DataTableRow::new(
+                format!("t{i}"),
+                vec![
+                    format!("素材 {i:02}"),
+                    kind.to_string(),
+                    format!("{}", 120 + i * 37),
+                    format!(
+                        "11-{:02} {:02}:{:02}",
+                        i % 28 + 1,
+                        9 + i % 9,
+                        (i * 7) % 60
+                    ),
+                    state.to_string(),
+                ],
+            )
+        })
+        .collect();
+
+    let virtual_columns = vec![
+        DataColumn::new("no", "#").width(64.0).right(),
+        DataColumn::new("name", "节点").width(200.0),
+        DataColumn::new("cpu", "CPU %").width(96.0).right().sortable(),
+        DataColumn::new("mem", "内存 (MB)").width(120.0).right(),
+    ];
+    let virtual_rows: Vec<DataTableRow> = (0..200)
+        .map(|i| {
+            DataTableRow::new(
+                format!("v{i}"),
+                vec![
+                    format!("{}", i + 1),
+                    format!("worker-{:03}", i + 1),
+                    format!("{}", (i * 7) % 100),
+                    format!("{}", 256 + i * 8),
+                ],
+            )
+        })
+        .collect();
+
+    let tree_selected = RwSignal::new("src".to_string());
+    let tree_nodes = vec![
+        TreeNode::new("root", "glass-design")
+            .icon(IconName::FOLDER_OPEN)
+            .child(
+                TreeNode::new("src", "src")
+                    .icon(IconName::FOLDER)
+                    .child(
+                        TreeNode::new("widgets", "widgets")
+                            .icon(IconName::LAYERS)
+                            .badge("12"),
+                    )
+                    .child(TreeNode::new("pages", "pages").icon(IconName::FOLDER)),
+            )
+            .child(
+                TreeNode::new("assets", "assets")
+                    .icon(IconName::FOLDER)
+                    .disabled()
+                    .child(TreeNode::new("logo", "logo.png").icon(IconName::IMAGE)),
+            )
+            .child(TreeNode::new("toml", "Cargo.toml").icon(IconName::FILE_TEXT))
+            .child(
+                TreeNode::new("remote", "远端缓存")
+                    .icon(IconName::CLOUD)
+                    .loading(),
+            ),
+        TreeNode::new("docs", "文档")
+            .icon(IconName::FOLDER)
+            .child(TreeNode::new("readme", "README.md").icon(IconName::FILE_TEXT))
+            .child(TreeNode::new("spec", "规范").icon(IconName::FILE_TEXT))
+            .child(TreeNode::new("archive", "归档").icon(IconName::FOLDER)),
+    ];
+
+    let grid_items: Vec<CollectionItem> = (1..=9)
+        .map(|i| {
+            let item = CollectionItem::new(format!("g{i}"), format!("资源 {i}"))
+                .subtitle(format!("{} 项", i * 3));
+            if i == 1 {
+                item.selected()
+            } else {
+                item
+            }
+        })
+        .collect();
+    let list_items: Vec<CollectionItem> = (1..=5)
+        .map(|i| {
+            CollectionItem::new(format!("l{i}"), format!("序列 {i}"))
+                .subtitle(format!("第 {i} 组"))
+        })
+        .collect();
+
+    let multi_list_count = RwSignal::new(0usize);
+    let multi_list_items: Vec<ListItem> = (1..=8)
+        .map(|i| {
+            ListItem::new(format!("m{i}"), format!("任务 {i:02}"))
+                .subtitle(if i % 2 == 0 { "进行中" } else { "待处理" })
+                .meta(format!("{i} h"))
+        })
+        .collect();
+
     view! {
         <div class="l-scroll" style="padding:24px 32px 64px">
             <div class="l-stack l-stack--6">
@@ -113,6 +228,106 @@ pub fn DataPage() -> impl IntoView {
                         </div>
                     </Card>
                 </div>
+
+                <div class="l-stack l-stack--3">
+                    <SectionTitle>"数据表"</SectionTitle>
+                    <Card>
+                        <div class="l-pad">
+                            <div class="l-stack l-stack--6">
+                                <div class="l-stack l-stack--3">
+                                    <p class="c-subtitle">"5 列 × 16 行：名称 / 大小可排序，类型列 140px 下限，多选（Ctrl/Cmd 切换、Shift 连选）。"</p>
+                                    <div style="width:720px;height:320px;display:grid">
+                                        <DataTable
+                                            columns=table_columns
+                                            rows=table_rows
+                                            selection=SelectionMode::Multiple
+                                            default_selected=vec!["t2".to_string()]
+                                            label="素材"
+                                        />
+                                    </div>
+                                </div>
+                                <div class="l-stack l-stack--3">
+                                    <p class="c-subtitle">"虚拟行：200 行，固定行高 36px；滚动时只渲染窗口 ± 6 行。"</p>
+                                    <div style="width:720px;height:320px;display:grid">
+                                        <DataTable
+                                            columns=virtual_columns
+                                            rows=virtual_rows
+                                            virtual_row_height=36.0
+                                            label="节点"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+
+                <div class="l-stack l-stack--3">
+                    <SectionTitle>"树"</SectionTitle>
+                    <Card>
+                        <div class="l-pad">
+                            <TreeView
+                                nodes=tree_nodes
+                                default_open=true
+                                selected=Signal::derive(move || tree_selected.get())
+                                on_select=Callback::new(move |k| tree_selected.set(k))
+                                on_retry=Callback::new(move |k| {
+                                    toast_with(format!("重试 {k}"), Tone::Info, None);
+                                })
+                                label="文件树"
+                            />
+                        </div>
+                    </Card>
+                </div>
+
+                <div class="l-stack l-stack--3">
+                    <SectionTitle>"集合"</SectionTitle>
+                    <Card>
+                        <div class="l-pad">
+                            <div class="l-stack l-stack--6">
+                                <div class="l-stack l-stack--3">
+                                    <p class="c-subtitle">"网格 3 列 × 9 项，多选。"</p>
+                                    <CollectionView
+                                        items=grid_items
+                                        layout=CollectionLayout::Grid
+                                        columns=3
+                                        selection=SelectionMode::Multiple
+                                        label="资源"
+                                    />
+                                </div>
+                                <div class="l-stack l-stack--3">
+                                    <p class="c-subtitle">"列表形态 5 项，单选。"</p>
+                                    <CollectionView
+                                        items=list_items
+                                        layout=CollectionLayout::List
+                                        label="序列"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+
+                <div class="l-stack l-stack--3">
+                    <SectionTitle>"列表多选"</SectionTitle>
+                    <Card>
+                        <div class="l-pad">
+                            <div class="l-stack l-stack--3">
+                                <p class="c-subtitle">
+                                    {move || format!("已选 {} 项", multi_list_count.get())}
+                                </p>
+                                <List
+                                    items=multi_list_items
+                                    selection=ListSelection::Multiple
+                                    on_selection_change=Callback::new(move |ids: Vec<String>| {
+                                        multi_list_count.set(ids.len());
+                                    })
+                                />
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+
             </div>
         </div>
     }

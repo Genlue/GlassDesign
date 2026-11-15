@@ -16,6 +16,39 @@ pub fn FormPage() -> impl IntoView {
     let plan = RwSignal::new("pro".to_string());
     let show_dialog = RwSignal::new(false);
 
+    // —— P3-B1：区间 / 组合框 / 令牌 / 日期时间 / 表单编排 ——
+    let range_price = RwSignal::new((20.0f64, 80.0f64));
+    let range_budget = RwSignal::new((250.0f64, 750.0f64));
+    let city = RwSignal::new("hangzhou".to_string());
+    let custom_tag = RwSignal::new(String::new());
+    let tags = RwSignal::new(vec![
+        "设计".to_string(),
+        "前端".to_string(),
+        "材质".to_string(),
+    ]);
+    let due = RwSignal::new("2026-11-20".to_string());
+    let at24 = RwSignal::new("09:30".to_string());
+    let at12 = RwSignal::new("14:05".to_string());
+    let form_name = RwSignal::new(String::new());
+    let form_mail = RwSignal::new(String::new());
+    let form_note = RwSignal::new(String::new());
+    let form_error = RwSignal::new(String::new());
+
+    let cities = vec![
+        ComboboxOption::new("beijing", "北京").hint("BJ"),
+        ComboboxOption::new("shanghai", "上海").hint("SH"),
+        ComboboxOption::new("hangzhou", "杭州").hint("HZ"),
+        ComboboxOption::new("shenzhen", "深圳").hint("SZ"),
+        ComboboxOption::new("chengdu", "成都").hint("CD"),
+        ComboboxOption::new("wuhan", "武汉").hint("WH"),
+    ];
+    let tag_options = vec![
+        ComboboxOption::new("design", "设计"),
+        ComboboxOption::new("frontend", "前端"),
+        ComboboxOption::new("material", "材质"),
+        ComboboxOption::new("motion", "动效"),
+    ];
+
     let name_error = Signal::derive(move || {
         if name.get().trim().is_empty() {
             "名称不能为空".to_string()
@@ -162,6 +195,159 @@ pub fn FormPage() -> impl IntoView {
                             }) />
                     </div>
                 </Dialog>
+
+                <div class="l-stack l-stack--3">
+                    <SectionTitle>"区间滑块"</SectionTitle>
+                    <Card>
+                        <div class="l-pad l-stack l-stack--6">
+                            <div class="l-stack l-stack--2">
+                                <span class="c-subtitle">"价格区间 · 0–100 / 步长 1 · 谁近谁动"</span>
+                                <div class="l-row l-row--3" style="align-items:center;max-width:420px">
+                                    <div style="flex:1;min-width:260px">
+                                        <RangeSlider
+                                            value=Signal::derive(move || range_price.get())
+                                            min=0.0 max=100.0 step=1.0 label="价格"
+                                            on_input=Callback::new(move |v| range_price.set(v))
+                                            on_change=Callback::new(move |v| range_price.set(v)) />
+                                    </div>
+                                    <span class="c-rangeslider__value">
+                                        {move || {
+                                            let (lo, hi) = range_price.get();
+                                            format!("{lo} – {hi}")
+                                        }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="l-stack l-stack--2">
+                                <span class="c-subtitle">"预算区间 · 0–1000 / 步长 50"</span>
+                                <div class="l-row l-row--3" style="align-items:center;max-width:420px">
+                                    <div style="flex:1;min-width:260px">
+                                        <RangeSlider
+                                            value=Signal::derive(move || range_budget.get())
+                                            min=0.0 max=1000.0 step=50.0 label="预算"
+                                            on_input=Callback::new(move |v| range_budget.set(v))
+                                            on_change=Callback::new(move |v| range_budget.set(v)) />
+                                    </div>
+                                    <span class="c-rangeslider__value">
+                                        {move || {
+                                            let (lo, hi) = range_budget.get();
+                                            format!("{lo} – {hi}")
+                                        }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+
+                <div class="l-stack l-stack--3">
+                    <SectionTitle>"组合框"</SectionTitle>
+                    <Card>
+                        <div class="l-pad l-stack l-stack--6">
+                            <div class="l-stack l-stack--2">
+                                <span class="c-subtitle">"城市 · ↓↑ 移动、Enter 选中、Esc 收起"</span>
+                                <div style="width:320px">
+                                    <Combobox options=cities
+                                        value=Signal::derive(move || city.get())
+                                        label="城市" placeholder="搜索城市"
+                                        on_change=Callback::new(move |v| city.set(v)) />
+                                </div>
+                            </div>
+                            <div class="l-stack l-stack--2">
+                                <span class="c-subtitle">"标签 · 允许自定义，输入后回车即提交"</span>
+                                <div style="width:320px">
+                                    <Combobox options=tag_options
+                                        value=Signal::derive(move || custom_tag.get())
+                                        label="标签" placeholder="输入或选择标签" allow_custom=true
+                                        on_change=Callback::new(move |v| custom_tag.set(v)) />
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+
+                <div class="l-stack l-stack--3">
+                    <SectionTitle>"令牌"</SectionTitle>
+                    <Card>
+                        <div class="l-pad l-stack l-stack--4">
+                            <span class="c-subtitle">"回车 / 逗号添加；空输入框 Backspace 删最后一枚；上限 6"</span>
+                            <div style="width:380px">
+                                <TokenField tokens=Signal::derive(move || tags.get())
+                                    label="标签" placeholder="输入标签后回车" max=6
+                                    on_change=Callback::new(move |v| tags.set(v)) />
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+
+                <div class="l-stack l-stack--3">
+                    <SectionTitle>"日期与时间"</SectionTitle>
+                    <Card>
+                        <div class="l-pad l-stack l-stack--6">
+                            <Row label="日期" hint="可选范围 2026-11-01 ~ 2026-12-31">
+                                <DatePicker value=Signal::derive(move || due.get())
+                                    min="2026-11-01" max="2026-12-31"
+                                    label="截止日期"
+                                    on_change=Callback::new(move |v| due.set(v)) />
+                            </Row>
+                            <Row label="时间 24h" hint="↑↓ 步进，Shift ×5，Enter 提交">
+                                <TimePicker value=Signal::derive(move || at24.get())
+                                    label="开会时间"
+                                    on_change=Callback::new(move |v| at24.set(v)) />
+                            </Row>
+                            <Row label="时间 12h" hint="三段：时 / 分 / 上午下午">
+                                <TimePicker value=Signal::derive(move || at12.get())
+                                    label="提醒时间" hour12=true
+                                    on_change=Callback::new(move |v| at12.set(v)) />
+                            </Row>
+                            <span class="c-subtitle">
+                                {move || format!("{} · {} · {}", due.get(), at24.get(), at12.get())}
+                            </span>
+                        </div>
+                    </Card>
+                </div>
+
+                <div class="l-stack l-stack--3">
+                    <SectionTitle>"表单编排"</SectionTitle>
+                    <Card>
+                        <div class="l-pad" style="max-width:420px">
+                            <Form
+                                error=Signal::derive(move || form_error.get())
+                                on_submit=Callback::new(move |_| {
+                                    if form_name.get().trim().is_empty() {
+                                        form_error.set("名称不能为空".to_string());
+                                        return;
+                                    }
+                                    form_error.set(String::new());
+                                    toast("已提交");
+                                })
+                                on_cancel=Callback::new(move |_| {
+                                    form_name.set(String::new());
+                                    form_mail.set(String::new());
+                                    form_note.set(String::new());
+                                    form_error.set(String::new());
+                                })
+                            >
+                                <FormField label="名称" required=true>
+                                    <Field value=Signal::derive(move || form_name.get())
+                                        placeholder="必填"
+                                        on_input=Callback::new(move |v| form_name.set(v)) />
+                                </FormField>
+                                <FormField label="邮箱" hint="不会公开">
+                                    <Field value=Signal::derive(move || form_mail.get())
+                                        placeholder="name@example.com"
+                                        on_input=Callback::new(move |v| form_mail.set(v)) />
+                                </FormField>
+                                <FormField label="备注">
+                                    <TextArea value=Signal::derive(move || form_note.get())
+                                        placeholder="补充说明…"
+                                        on_input=Callback::new(move |v| form_note.set(v)) />
+                                </FormField>
+                                <FormActions submit_label="提交" cancel_label="重置" />
+                            </Form>
+                        </div>
+                    </Card>
+                </div>
             </div>
         </div>
     }

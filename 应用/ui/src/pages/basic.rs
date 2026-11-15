@@ -146,6 +146,50 @@ pub fn BasicPage() -> impl IntoView {
                     <InlineMessage tone=Tone::Success title="已创建" description="这是 P2 的静态反馈。"
                         dismissible=true on_dismiss=Callback::new(move |_| saved.set(false)) />
                 </Show>
+
+                <div class="l-stack l-stack--3">
+                    <SectionTitle>"玻璃尺寸档"</SectionTitle>
+                    <Card>
+                        <div class="l-pad l-stack l-stack--4">
+                            <p class="c-subtitle">
+                                "只有显式 data-glass 的元素才套用固定尺寸贴图；不写档位仍走 Auto 涂层（无折射）。"
+                            </p>
+                            <div style="position:relative;display:flex;flex-wrap:wrap;align-items:flex-start;gap:16px;padding:20px;border-radius:18px;overflow:hidden;background:linear-gradient(115deg,#ff9a62 0%,#ff5f8f 34%,#7b61ff 68%,#2ec5ce 100%)">
+                                <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.18) 0 2px,transparent 2px 32px)"></div>
+                                <GlassPanel size=GlassPanelSize::P320x220>
+                                    <div style="position:relative;padding:18px;color:#fff;font-size:12px;letter-spacing:.04em;opacity:.92">
+                                        "panel 320 × 220"
+                                    </div>
+                                </GlassPanel>
+                                <GlassPanel size=GlassPanelSize::P480x320>
+                                    <div style="position:relative;padding:18px;color:#fff;font-size:12px;letter-spacing:.04em;opacity:.92">
+                                        "panel 480 × 320"
+                                    </div>
+                                </GlassPanel>
+                                <GlassPanel size=GlassPanelSize::P640x420>
+                                    <div style="position:relative;padding:18px;color:#fff;font-size:12px;letter-spacing:.04em;opacity:.92">
+                                        "panel 640 × 420"
+                                    </div>
+                                </GlassPanel>
+                            </div>
+                            <div style="position:relative;padding:20px;border-radius:18px;overflow:hidden;background:linear-gradient(115deg,#2ec5ce 0%,#7b61ff 46%,#ff5f8f 100%)">
+                                <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.16) 0 2px,transparent 2px 32px)"></div>
+                                <div class="c-menu" data-glass="menu-240x280" role="menu" style="position:relative;left:0;top:0">
+                                    <div class="c-menu__item" role="menuitem" tabindex="-1">"新建文件"</div>
+                                    <div class="c-menu__item" role="menuitem" tabindex="-1">"新建文件夹"</div>
+                                    <div class="c-menu__sep" role="separator"></div>
+                                    <div class="c-menu__item" role="menuitem" tabindex="-1">"重命名"</div>
+                                    <div class="c-menu__item" role="menuitem" tabindex="-1">"复制链接"</div>
+                                    <div class="c-menu__item" role="menuitem" tabindex="-1">"在访达中显示"</div>
+                                    <div class="c-menu__item" role="menuitem" tabindex="-1">"移动到…"</div>
+                                    <div class="c-menu__item" role="menuitem" tabindex="-1">"导出为 PDF"</div>
+                                    <div class="c-menu__sep" role="separator"></div>
+                                    <div class="c-menu__item c-menu__item--danger" role="menuitem" tabindex="-1">"删除"</div>
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
             </div>
         </div>
     }

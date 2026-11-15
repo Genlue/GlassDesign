@@ -1,11 +1,17 @@
+pub mod appearance;
 pub mod basic;
 pub mod data;
 pub mod forms;
 pub mod nav;
 pub mod overlays;
+pub mod panels;
+pub mod toolbar;
 
+pub use appearance::AppearancePage;
 pub use basic::BasicPage;
 pub use data::DataPage;
 pub use forms::FormPage;
 pub use nav::NavPage;
 pub use overlays::OverlayPage;
+pub use panels::PanelsPage;
+pub use toolbar::ToolbarPage;

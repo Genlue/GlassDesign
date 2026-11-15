@@ -228,3 +228,39 @@
   }
 }
 
+/* --------------------------------------------------------------------------
+   角标（P3 追加）
+   —— 40 分区原本没有角标：旧库的 Dock 只有图标，没有「有几条未读」这一层。
+      补它是因为导航项经常要表达计数，而数字不该挤在 40px 的圆钮里
+      （挤进去图标就得缩，圆钮的等宽假设也会破）。
+      用绝对定位压在圆钮右上角：不占圆钮内部空间，也不改圆钮尺寸。
+   -------------------------------------------------------------------------- */
+
+.c-dock__badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 4px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-size: var(--fs-11);
+  font-weight: 600;
+  line-height: 14px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  /* 环用圆钮底色，让角标和圆钮咬合成一颗，而不是浮在旁边 */
+  box-shadow: 0 0 0 1.5px var(--surface-control-solid);
+  /* 角标不是第二个点击目标：点它等同点圆钮 */
+  pointer-events: none;
+}
+
+/* 选中态圆钮本身就是强调色实心：角标反相成中性片，否则强调色压强调色看不见 */
+.c-dock__item[aria-current="page"] .c-dock__badge {
+  background: var(--surface-control-solid);
+  color: var(--accent);
+  box-shadow: none;
+}
+

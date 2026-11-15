@@ -2956,6 +2956,15 @@ html[data-focused="0"] .c-nav__item[aria-selected="true"] .c-nav__icon {
   pointer-events: none;
 }
 
+/* 菜单超过一屏、或命中玻璃档（menu-240x280 把高度写死 280）时，项多了要能滚。
+   没有这条时基础规则里的 overflow:hidden 会把多出来的项**无声切掉** ——
+   菜单看起来「只有 6 项」，用户完全不知道下面还有。 */
+.c-menu {
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 
 
 /* ===== components/14-toast.css ===== */
@@ -3289,6 +3298,21 @@ html[data-focused="0"] .c-nav__item[aria-selected="true"] .c-nav__icon {
   box-shadow: inset 0 0.5px 0 var(--line-highlight);
   pointer-events: none;
 }
+
+/* --------------------------------------------------------------------------
+   玻璃尺寸档（P3-A）—— opt-in，不是默认布局
+   —— 贴图尺寸必须与元素边框盒逐像素一致（feImage 不按元素框拉伸），
+      所以只有「调用方能保证宽高」的面才进档位表：panel / menu / sheet / toast。
+      Dialog、Popover、Inspector 的高度由内容决定，**不要**加档，继续走 Auto。
+
+   档位规则全部在生成文件 `63-glass-svg.css` 里，选择器形如
+   `.c-glass-panel[data-glass="panel-480x320"]`：命中时才写死
+   width / height / box-sizing / border-radius，并套上 url(#gd-glass-…)。
+   `border-radius` 必须与 build-glass.mjs 里该档的 `r` 完全一致，
+   否则滤镜圆角停在 18px、可视圆角停在 12px，会看到一圈「双重边」。
+
+   没有 data-glass 的元素不受任何影响：本文件里的基础类仍只负责涂层与模糊。
+   -------------------------------------------------------------------------- */
 
 
 
@@ -5350,6 +5374,42 @@ html[data-focused="0"] .c-nav__item[aria-selected="true"] .c-nav__icon {
   }
 }
 
+/* --------------------------------------------------------------------------
+   角标（P3 追加）
+   —— 40 分区原本没有角标：旧库的 Dock 只有图标，没有「有几条未读」这一层。
+      补它是因为导航项经常要表达计数，而数字不该挤在 40px 的圆钮里
+      （挤进去图标就得缩，圆钮的等宽假设也会破）。
+      用绝对定位压在圆钮右上角：不占圆钮内部空间，也不改圆钮尺寸。
+   -------------------------------------------------------------------------- */
+
+.c-dock__badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 4px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-size: var(--fs-11);
+  font-weight: 600;
+  line-height: 14px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  /* 环用圆钮底色，让角标和圆钮咬合成一颗，而不是浮在旁边 */
+  box-shadow: 0 0 0 1.5px var(--surface-control-solid);
+  /* 角标不是第二个点击目标：点它等同点圆钮 */
+  pointer-events: none;
+}
+
+/* 选中态圆钮本身就是强调色实心：角标反相成中性片，否则强调色压强调色看不见 */
+.c-dock__item[aria-current="page"] .c-dock__badge {
+  background: var(--surface-control-solid);
+  color: var(--accent);
+  box-shadow: none;
+}
+
 
 
 /* ===== components/41-inspector.css ===== */
@@ -5536,6 +5596,80 @@ html[data-focused="0"] .c-nav__item[aria-selected="true"] .c-nav__icon {
   white-space: nowrap;
 }
 
+/* ==========================================================================
+   P3-E1 追加（检查器 / 属性表 / 大纲）
+   —— 原分区只定了「纯文本值」和「1–6 级大纲」，下面补 Rust 侧真正用到的三种状态。
+   ========================================================================== */
+
+/* 顶栏页签：Rust 不画 .c-seg__ind（那是旧库的 JS 测量滑块），
+   选中项就只剩「--text-on-accent 白字 + 透明底」，浅色主题下读不出来。
+   只在检查器作用域内补一块实心强调底，不动全局 .c-seg。 */
+.c-inspector__tabs .c-seg__opt[aria-checked="true"],
+.c-inspector__tabs .c-seg__opt[aria-checked="true"]:hover {
+  background: var(--accent);
+}
+
+/* 属性行的值区现在会放控件（开关 / 滑块 / 下拉），不再是纯文本：
+   改成靠右的横向盒子，控件按自身宽度排；上限避免长标签把值挤没。
+   等宽值（.is-mono）保持块级 —— 它依赖 overflow + ellipsis，flex 容器里失效。 */
+.c-props__value {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--s-2);
+  max-width: 66%;
+}
+
+.c-props__value.is-mono {
+  display: block;
+  max-width: none;
+}
+
+/* baseline 对齐只对「两边都是文字」成立：值区放 34px 高的滑块时没有文字基线，
+   整行会按滑块的底边对齐，标签被压到行底，行高也翻倍。
+   单行文字行居中和 baseline 看起来一样，所以统一改居中。 */
+.c-props__row {
+  align-items: center;
+}
+
+/* 大纲缩进改由 --depth 驱动。原来的 data-level 只分到 6 档，且 4–6 共用 36px，
+   层级再深就读不出结构；--depth 是 12px 一级的连续量。选择器带 [data-level]
+   才压得过上面那几条同特异性的分档规则（本文件排在它们之后）。 */
+.c-outline__item[data-level] {
+  padding-left: calc(var(--s-3) + var(--depth, 0) * 12px);
+}
+
+/* 行首图标：大纲行本身没有 gap，不给外边距图标会贴着文字。 */
+.c-outline__item > .ic {
+  flex: none;
+  margin-right: var(--s-2);
+  color: var(--text-quaternary);
+}
+
+/* 键盘焦点环：大纲走 roving tabindex，焦点落在哪一行必须看得见
+   （原来只有 hover 与 data-active 两态）。 */
+.c-outline__item:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: -2px;
+  border-radius: var(--r-xs);
+}
+
+
+
+/* 行首图标位：有图标与无图标混排时，必须占同样的宽，
+   否则文字起始线相差一个图标宽（13px + gap），层级看不住。 */
+.c-outline__lead {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  width: 13px;
+  margin-right: var(--s-2);
+}
+
+.c-outline__lead:empty {
+  visibility: hidden;
+}
 
 
 /* ===== components/42-drawer.css ===== */
@@ -5738,6 +5872,13 @@ html[data-focused="0"] .c-nav__item[aria-selected="true"] .c-nav__icon {
 
 .c-drawer[data-side="right"] .c-drawer__body {
   padding: 0 var(--s-7) var(--s-7) var(--s-9);
+}
+
+/* 没有抓握条、也没有标题栏的左右抽屉：body 是 sheet 的第一个孩子，
+   原来的上内边距是 0，内容会贴着窗口上沿像被裁掉一截。只在 body 打头时补，
+   bottom/top 抽屉的第一个孩子是抓握条，不受影响。 */
+.c-drawer__sheet > .c-drawer__body:first-child {
+  padding-top: var(--s-7);
 }
 
 
@@ -6147,6 +6288,46 @@ html[data-resizing] {
     transition: none;
   }
 }
+
+/* --------------------------------------------------------------------------
+   静态排布（P3-C 追加）
+   —— 虚拟滚动仍走上面的「spacer + 绝对定位」；小数据集不需要测量，
+      用 data-static="1" 把选项切回正常流，交给 CSS Grid 排。
+      列数由 Rust 写 --cols，行高下限沿用 --item-h。
+   -------------------------------------------------------------------------- */
+
+.c-collection[data-static="1"] {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 1), minmax(0, 1fr));
+  gap: var(--s-2);
+  padding: var(--s-2);
+  align-content: start;
+}
+
+/* spacer 在静态模式下只做「透明容器」：让选项直接成为网格子项 */
+.c-collection[data-static="1"] .c-collection__spacer {
+  display: contents;
+}
+
+.c-collection[data-static="1"] .c-collection__item {
+  position: static;
+  min-width: 0;
+}
+
+.c-collection[data-static="1"].c-collection--list {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.c-collection[data-static="1"].c-collection--list .c-collection__item {
+  min-height: var(--item-h, 32px);
+  padding-block: var(--s-2);
+}
+
+/* 空态要独占一整行，否则会被挤进第一格 */
+.c-collection[data-static="1"] .c-collection__empty {
+  grid-column: 1 / -1;
+}
+
 
 
 /* ===== components/46-form.css ===== */
@@ -6734,6 +6915,50 @@ html[data-resizing] {
   min-height: var(--pane-min, 0px);
 }
 
+/* ==========================================================================
+   P3-E1 追加（无测量比例分栏）
+   —— Rust 侧只往根节点写一个 --split（0..1），两栏宽度在这里算出来。
+   —— 百分比 flex-basis 直接对容器主轴求值，所以拖动时不需要同步测量容器，
+      也不会出现「先量后改」那一帧的跳动；窗口缩放两栏一起跟着缩放。
+   —— 9px 是分隔条命中区（见上面 .c-split__sep 的 flex: 0 0 9px），
+      先扣掉它两栏才刚好铺满，否则永远差一条缝。
+   —— 折叠时 Rust 把 --split 写成 0，第一栏占 0 且 display:none，
+      第二栏自然吃满，不需要再写「谁被折叠」的分支。
+   ========================================================================== */
+
+.c-split[data-ratio="1"] > .c-split__pane[data-slot="a"] {
+  --pane-size: calc((100% - 9px) * var(--split, 0.5));
+}
+
+.c-split[data-ratio="1"] > .c-split__pane[data-slot="b"] {
+  --pane-size: calc((100% - 9px) * (1 - var(--split, 0.5)));
+}
+
+/* 横向分栏在定高容器里要铺满：两栏的高度就是容器高度，
+   否则分隔条只到「内容高度」，上下会各留一截空白。
+   父级高度不确定时 100% 自动退化成 auto，不会把内容压扁。 */
+.c-split[data-axis="x"][data-ratio="1"] {
+  height: 100%;
+}
+
+/* 展开 / 折叠按钮压在 9px 命中区正中：常驻会把最顺手的拖动位置挡掉。
+   所以展开态把它降级成「悬停或键盘聚焦才出现」；折叠态它是唯一入口，常亮。 */
+.c-split__expand {
+  transition: background-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out), opacity var(--dur-1) var(--ease-out);
+}
+
+.c-split__expand[data-idle="1"] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.c-split__sep:hover .c-split__expand[data-idle="1"],
+.c-split__sep:focus-within .c-split__expand[data-idle="1"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 /* 拖动期间光标由 43-resizer.css 的 html[data-resizing] 统一接管，
    这里只补一条：拖的时候不要选中面板里的文字。 */
 @media (prefers-reduced-motion: reduce) {
@@ -6742,6 +6967,7 @@ html[data-resizing] {
     transition-duration: 1ms;
   }
 }
+
 
 
 /* ===== components/49-sheet.css ===== */
@@ -7565,8 +7791,12 @@ html[data-resizing] {
 }
 
 /* 拖入高亮：描边转强调色 + 淡底。颜色之外还借底色变化，
-   深色主题下光靠描边深浅不容易分辨 */
-.c-dropzone[data-state="over"] {
+   深色主题下光靠描边深浅不容易分辨。
+
+   `data-over="1"` 是 P3-B2 之后对外的布尔契约（拖拽中为 1），
+   `data-state="over"` 是原有写法；两个选择器并列，谁都不用改。 */
+.c-dropzone[data-state="over"],
+.c-dropzone[data-over="1"] {
   border-color: var(--accent);
   background: var(--accent-soft);
   color: var(--text-primary);
@@ -7980,6 +8210,38 @@ html[data-resizing] {
 .c-datatable__status[hidden] {
   display: none;
 }
+
+/* --------------------------------------------------------------------------
+   列拖拽属性映射（P3-C 追加）
+   —— DOM 契约用 data-drag="1" / data-drop="before|after"；视觉规则沿用
+      上面的 .is-dragging / .is-drop-*，这里只做「属性 → 视觉」的映射，
+      不新增任何尺寸或颜色。
+   -------------------------------------------------------------------------- */
+
+.c-datatable[data-drag="1"],
+.c-datatable[data-drag="1"] .c-datatable__row {
+  user-select: none;
+}
+
+.c-datatable[data-drag="1"] {
+  cursor: grabbing;
+}
+
+.c-datatable__th[data-drop="before"] {
+  box-shadow: inset 2px 0 var(--accent);
+}
+
+.c-datatable__th[data-drop="after"] {
+  box-shadow: inset -2px 0 var(--accent);
+}
+
+/* 表头本身可聚焦（Alt+←/→ 换列），焦点环不能靠浏览器默认样式：
+   它会被 sticky 背景吃掉，键盘用户看不到自己在哪一列。 */
+.c-datatable__th:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: -2px;
+}
+
 
 
 
@@ -8905,6 +9167,16 @@ html[data-resizing] {
   pointer-events: none;
   opacity: 0.55;
 }
+
+/* ---------------- 补充（P3-B2） ---------------- */
+
+/* 屏幕取色按钮在能力探测失败时常驻但禁用：灰按钮比「时有时无」好解释，
+   而且读屏能念出 title 里的原因。原生 disabled 不会自己降透明度。 */
+.c-colorpicker__eyedropper:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 
 
 /* ===== components/58-range-slider.css ===== */
@@ -9962,6 +10234,42 @@ html[data-resizing] {
   min-width: 0;
 }
 
+/* ==========================================================================
+   P3-E1 追加（状态项）
+   —— 原分区只给任务行（__task / __row）认 data-tone，状态项没有着色规则，
+      那颗 live 点永远是 currentColor（灰），「已连接 / 已断开」只能靠字读。
+   —— 可点状态项在 Rust 侧是 div + role="button"（旧库也是 div；换成 <button>
+      要重置 UA 的边框/底色/字体，反而更脏），所以这里补焦点环与按压反馈。
+   ========================================================================== */
+
+.c-statusbar__item[data-tone="accent"] .c-statusbar__dot {
+  background: var(--accent);
+}
+
+.c-statusbar__item[data-tone="success"] .c-statusbar__dot {
+  background: var(--success);
+}
+
+.c-statusbar__item[data-tone="warning"] .c-statusbar__dot {
+  background: var(--warning);
+}
+
+.c-statusbar__item[data-tone="danger"] .c-statusbar__dot {
+  background: var(--danger);
+}
+
+/* 不可点的项不该亮：只给真正挂了 role="button" 的行反馈 */
+.c-statusbar__item[role="button"]:hover {
+  background: var(--surface-control-active);
+}
+
+.c-statusbar__item[role="button"]:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: -2px;
+  border-radius: var(--r-xs);
+}
+
+
 
 /* ===== components/61-document-tabs.css ===== */
 /* ==========================================================================
@@ -10459,6 +10767,28 @@ html[data-resizing] {
   background: var(--surface-control-active);
 }
 
+/* ==========================================================================
+   62-补 · 锁定行（P3-E3 追加，ToolbarCustomization 用）
+   —— 锁定 = 永远可见、不能隐藏、不参与重排。上面那套是旧库「必需项」的
+      写法（真 checkbox + :disabled），新控件复用 Switch 与手柄按钮，
+      所以补两条：
+      ① 锁定行不渲染手柄按钮（不可拖），但为了左缘对齐仍占一个手柄位 ——
+         那个占位元素不能有「抓取」光标，否则读起来像「能拖但拖不动」；
+      ② Switch 没有 disabled 变体（不改 widget 契约），只能按行标记压暗
+         并挡住指针；语义上「锁定」由行上的 .__req 文案与 title 交代。
+   ========================================================================== */
+
+.c-toolbarcustom__row[data-locked="1"] > .c-toolbarcustom__grip {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.c-toolbarcustom__row[data-locked="1"] .c-switch {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+
 
 /* ===== components/63-glass-svg.css ===== */
 /* 由 scripts/build-glass.mjs 生成，请勿手改。
@@ -10493,6 +10823,86 @@ html[data-resizing] {
   justify-content: center;
   -webkit-backdrop-filter: blur(calc(var(--thumb-blur-px) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-thumb);
   backdrop-filter: blur(calc(var(--thumb-blur-px) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-thumb);
+}
+
+.c-glass-panel[data-glass="panel-320x220"] {
+  width: 320px;
+  height: 220px;
+  box-sizing: border-box;
+  border-radius: 18px;
+  /* 尺寸档的前提是「元素真的这么大」：flex 子项默认会缩，缩了贴图就对不上。 */
+  flex: none;
+  -webkit-backdrop-filter: blur(calc(var(--m-panel-blur) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-panel-320x220);
+  backdrop-filter: blur(calc(var(--m-panel-blur) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-panel-320x220);
+}
+
+.c-glass-panel[data-glass="panel-480x320"] {
+  width: 480px;
+  height: 320px;
+  box-sizing: border-box;
+  border-radius: 18px;
+  /* 尺寸档的前提是「元素真的这么大」：flex 子项默认会缩，缩了贴图就对不上。 */
+  flex: none;
+  -webkit-backdrop-filter: blur(calc(var(--m-panel-blur) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-panel-480x320);
+  backdrop-filter: blur(calc(var(--m-panel-blur) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-panel-480x320);
+}
+
+.c-glass-panel[data-glass="panel-640x420"] {
+  width: 640px;
+  height: 420px;
+  box-sizing: border-box;
+  border-radius: 18px;
+  /* 尺寸档的前提是「元素真的这么大」：flex 子项默认会缩，缩了贴图就对不上。 */
+  flex: none;
+  -webkit-backdrop-filter: blur(calc(var(--m-panel-blur) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-panel-640x420);
+  backdrop-filter: blur(calc(var(--m-panel-blur) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-panel-640x420);
+}
+
+.c-menu[data-glass="menu-240x200"] {
+  width: 240px;
+  height: 200px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  /* 尺寸档的前提是「元素真的这么大」：flex 子项默认会缩，缩了贴图就对不上。 */
+  flex: none;
+  -webkit-backdrop-filter: blur(calc(var(--m-popover-blur) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-menu-240x200);
+  backdrop-filter: blur(calc(var(--m-popover-blur) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-menu-240x200);
+}
+
+.c-menu[data-glass="menu-240x280"] {
+  width: 240px;
+  height: 280px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  /* 尺寸档的前提是「元素真的这么大」：flex 子项默认会缩，缩了贴图就对不上。 */
+  flex: none;
+  -webkit-backdrop-filter: blur(calc(var(--m-popover-blur) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-menu-240x280);
+  backdrop-filter: blur(calc(var(--m-popover-blur) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-menu-240x280);
+}
+
+.c-sheet[data-glass="sheet-520x360"] {
+  width: 520px;
+  height: 360px;
+  box-sizing: border-box;
+  border-radius: 20px;
+  /* 尺寸档的前提是「元素真的这么大」：flex 子项默认会缩，缩了贴图就对不上。 */
+  flex: none;
+  /* 只有档位自己说了算：max-width/height 会把它压回可变尺寸。 */
+  max-width: none;
+  max-height: none;
+  -webkit-backdrop-filter: blur(calc(var(--m-sheet-blur) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-sheet-520x360);
+  backdrop-filter: blur(calc(var(--m-sheet-blur) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-sheet-520x360);
+}
+
+.c-toast[data-glass="toast-320x34"] {
+  width: 320px;
+  height: 34px;
+  box-sizing: border-box;
+  border-radius: 17px;
+  /* 尺寸档的前提是「元素真的这么大」：flex 子项默认会缩，缩了贴图就对不上。 */
+  flex: none;
+  -webkit-backdrop-filter: blur(calc(calc(10px + 26px * var(--lg)) * var(--glass-blur-k, 0.9))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-toast-320x34);
+  backdrop-filter: blur(calc(calc(10px + 26px * var(--lg)) * var(--glass-blur-k, 0.9))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-toast-320x34);
 }
 
 

@@ -1,6 +1,6 @@
 [package]
 name = "glass-design"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 description = "GlassDesign：Tauri 2 + Leptos 的桌面控件库"
 license = "MIT"
@@ -9,8 +9,14 @@ license = "MIT"
 leptos = { version = "=0.8.23", features = ["csr"] }
 wasm-bindgen = "=0.2.130"
 js-sys = "0.3"
+# web-sys 特性一次开齐：多个组件族并行开发，避免各自改这个文件。
 web-sys = { version = "0.3", features = [
-  "Document", "Element", "Node", "Window", "HtmlElement", "HtmlInputElement",
-  "HtmlStyleElement", "Storage", "MediaQueryList", "CssStyleDeclaration",
-  "PointerEvent", "DomRect", "HtmlDivElement", "HtmlButtonElement",
+  "Document", "Element", "Node", "NodeList", "EventTarget", "Event", "CustomEvent",
+  "Window", "HtmlElement", "HtmlDivElement", "HtmlButtonElement", "HtmlInputElement",
+  "HtmlTextAreaElement", "HtmlSelectElement", "HtmlOptionElement", "HtmlAnchorElement",
+  "HtmlImageElement", "HtmlStyleElement", "HtmlCollection", "DocumentFragment",
+  "DomRect", "DomTokenList", "CssStyleDeclaration", "Storage", "MediaQueryList",
+  "StorageEvent", "PointerEvent", "MouseEvent", "KeyboardEvent", "FocusEvent",
+  "InputEvent", "CompositionEvent", "WheelEvent", "DragEvent", "DataTransfer",
+  "FileList", "File", "Blob", "FileReader", "Url", "ScrollToOptions",
 ] }

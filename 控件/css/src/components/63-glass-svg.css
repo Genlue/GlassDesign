@@ -31,3 +31,83 @@
   -webkit-backdrop-filter: blur(calc(var(--thumb-blur-px) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-thumb);
   backdrop-filter: blur(calc(var(--thumb-blur-px) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-thumb);
 }
+
+.c-glass-panel[data-glass="panel-320x220"] {
+  width: 320px;
+  height: 220px;
+  box-sizing: border-box;
+  border-radius: 18px;
+  /* 尺寸档的前提是「元素真的这么大」：flex 子项默认会缩，缩了贴图就对不上。 */
+  flex: none;
+  -webkit-backdrop-filter: blur(calc(var(--m-panel-blur) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-panel-320x220);
+  backdrop-filter: blur(calc(var(--m-panel-blur) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-panel-320x220);
+}
+
+.c-glass-panel[data-glass="panel-480x320"] {
+  width: 480px;
+  height: 320px;
+  box-sizing: border-box;
+  border-radius: 18px;
+  /* 尺寸档的前提是「元素真的这么大」：flex 子项默认会缩，缩了贴图就对不上。 */
+  flex: none;
+  -webkit-backdrop-filter: blur(calc(var(--m-panel-blur) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-panel-480x320);
+  backdrop-filter: blur(calc(var(--m-panel-blur) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-panel-480x320);
+}
+
+.c-glass-panel[data-glass="panel-640x420"] {
+  width: 640px;
+  height: 420px;
+  box-sizing: border-box;
+  border-radius: 18px;
+  /* 尺寸档的前提是「元素真的这么大」：flex 子项默认会缩，缩了贴图就对不上。 */
+  flex: none;
+  -webkit-backdrop-filter: blur(calc(var(--m-panel-blur) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-panel-640x420);
+  backdrop-filter: blur(calc(var(--m-panel-blur) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-panel-640x420);
+}
+
+.c-menu[data-glass="menu-240x200"] {
+  width: 240px;
+  height: 200px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  /* 尺寸档的前提是「元素真的这么大」：flex 子项默认会缩，缩了贴图就对不上。 */
+  flex: none;
+  -webkit-backdrop-filter: blur(calc(var(--m-popover-blur) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-menu-240x200);
+  backdrop-filter: blur(calc(var(--m-popover-blur) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-menu-240x200);
+}
+
+.c-menu[data-glass="menu-240x280"] {
+  width: 240px;
+  height: 280px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  /* 尺寸档的前提是「元素真的这么大」：flex 子项默认会缩，缩了贴图就对不上。 */
+  flex: none;
+  -webkit-backdrop-filter: blur(calc(var(--m-popover-blur) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-menu-240x280);
+  backdrop-filter: blur(calc(var(--m-popover-blur) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-menu-240x280);
+}
+
+.c-sheet[data-glass="sheet-520x360"] {
+  width: 520px;
+  height: 360px;
+  box-sizing: border-box;
+  border-radius: 20px;
+  /* 尺寸档的前提是「元素真的这么大」：flex 子项默认会缩，缩了贴图就对不上。 */
+  flex: none;
+  /* 只有档位自己说了算：max-width/height 会把它压回可变尺寸。 */
+  max-width: none;
+  max-height: none;
+  -webkit-backdrop-filter: blur(calc(var(--m-sheet-blur) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-sheet-520x360);
+  backdrop-filter: blur(calc(var(--m-sheet-blur) * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-sheet-520x360);
+}
+
+.c-toast[data-glass="toast-320x34"] {
+  width: 320px;
+  height: 34px;
+  box-sizing: border-box;
+  border-radius: 17px;
+  /* 尺寸档的前提是「元素真的这么大」：flex 子项默认会缩，缩了贴图就对不上。 */
+  flex: none;
+  -webkit-backdrop-filter: blur(calc(calc(10px + 26px * var(--lg)) * var(--glass-blur-k, 0.9))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-toast-320x34);
+  backdrop-filter: blur(calc(calc(10px + 26px * var(--lg)) * var(--glass-blur-k, 0.9))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-toast-320x34);
+}

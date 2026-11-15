@@ -4,8 +4,8 @@ Tauri 2 + Rust 的桌面界面库。
 
 库里只有一个可复制单元：`控件/`。整个文件夹拷进别的项目，加一行 path 依赖，调一次 `install()`，就能用 `view!` 拼界面；升级时用新文件夹覆盖旧文件夹。
 
-> **状态：P2 基础控件已落地**（2026-11-15）。
-> 51 个 Rust 组件、五个画廊分区、Tauri 2 宿主；玻璃材质为**构建期预计算贴图 + 静态 SVG filter**，运行时没有 JavaScript、canvas 或 WebGL。
+> **状态：P3 已收口**（2026-11-15）。
+> 88 个 Rust 组件、八个画廊分区、Tauri 2 宿主；玻璃材质为**构建期预计算贴图 + 静态 SVG filter**，运行时没有 JavaScript、canvas 或 WebGL。
 
 ---
 
@@ -14,7 +14,7 @@ Tauri 2 + Rust 的桌面界面库。
 | 仓库 | 是什么 | 状态 |
 |---|---|---|
 | `Golden Gate HTML Design` | 原库：Electron + 原生 HTML/CSS/ES Module，84 个命令式工厂 | **冻结为参照**，不再演进 |
-| `GlassDesign` | 新库：Tauri 2 + Rust + Leptos，声明式组件 + 静态 SVG 材质 | **P2 · 51 组件** |
+| `GlassDesign` | 新库：Tauri 2 + Rust + Leptos，声明式组件 + 静态 SVG 材质 | **P3 · 88 组件** |
 
 旧库不是“上一版”，是**视觉与行为的对照标本**：10,204 行 CSS、8 套玻璃参数、766 条断言都留在旧仓库，新库逐批对照移植。
 
@@ -43,7 +43,12 @@ Tauri 2 + Rust 的桌面界面库。
 | `CapsuleSize::Round` | 34 × 34 | 顶栏圆形按钮 |
 | `CapsuleSize::Sm` | 112 × 34 | 短胶囊 |
 | `CapsuleSize::Md` | 180 × 34 | 长胶囊 |
-| `CapsuleSize::Auto` | 自适应 | 不套 SVG filter，走纯 CSS 兜底 |
+| 滑块拇指 | 24 × 16 | `Slider` / `RangeSlider` |
+| `GlassPanelSize` | 320×220 / 480×320 / 640×420 | 折射面板 |
+| 菜单 | 240×200 / 240×280 | `MenuButton fixed_size` |
+| 模态 | 520×360 | `Sheet` 的 Md 档 |
+| 提示条 | 320×34 | `ToastHost` |
+| `Auto` | 自适应 | 不套 SVG filter，走纯 CSS 兜底 |
 
 要加新尺寸，在 `scripts/build-glass.mjs` 的 `SHAPES` 里加一条，重新生成贴图与 CSS；不要指望一张图拉伸到所有宽度。
 
@@ -64,7 +69,7 @@ GlassDesign/
 │   ├── 00-探索-脉络.md         现状、判断、选型、风险、路线
 │   ├── 01-控件契约.md          声明式 API：props / 受控 / 插槽 / 生命周期
 │   ├── 02-迁移矩阵.md          84 个工厂 → Rust 组件的分批与难度
-│   ├── 03-实现清单.md          51 个已实现组件、简化边界与验证记录
+│   ├── 03-实现清单.md          88 个已实现组件、简化边界与验证记录
 │   └── 04-交接.md             现在到哪一步、为什么、坑在哪、下一步
 ├── 控件/                      ← 唯一复制单元
 │   ├── Cargo.toml
@@ -75,7 +80,7 @@ GlassDesign/
 │   ├── ui/                    Leptos 画廊（wasm）
 │   └── src-tauri/             Tauri 2 宿主
 ├── scripts/                   构建 CSS / 贴图 / 图标 / 截图
-└── index.html                 静态视觉快照（P1）
+└── index.html                 静态视觉快照（无交互，可直接双击打开）
 ```
 
 ## 快速开始
@@ -113,8 +118,10 @@ cargo build -p glass-design-app
 
 ## 下一步
 
-P2 已完成：Button / IconButton / Field / Switch / Segmented / Checkbox / RadioGroup / Slider / Stepper / NumberField / TextArea / SearchField / Select / FormField / Badge / Chip / Avatar / ProgressRing / Progress / Spinner / Skeleton / Empty / InlineMessage / List / Table / Disclosure / Tabs / Breadcrumb / Pagination / Dialog / Toast / Tile / MediaTile / NavInfo / NavCard / Capsule / AppShell / NavColumn / Toolbar。
+P3 已完成：把旧库剩下的 37 个组件全部迁完（数值/日期/令牌/文件/颜色、`DataTable` / `TreeView` / `CollectionView`、
+`Menu` / `Popover` / `Tooltip` / `Sheet` / `Drawer`、`Inspector` / `SplitView` / `StatusBar`、`NavDock` / `DocumentTabs` /
+`NavSearch` / `ToolbarOverflow` / `ToolbarCustomization` / `Form`），并把浮层统一到 `OverlayHost`。
 
-P3 待做：RangeSlider、Combobox、DatePicker / TimePicker、FilePicker / DropZone、TokenField、ColorWell / Swatches、DataTable / TreeView / CollectionView、独立 Menu / Popover / Tooltip、Drawer / Sheet、Inspector / SplitView / StatusBar。
+P4 候选都是**能力上限**，不是漏项：虚拟化公共层、统一 Portal、`DataTable` 行内编辑与受控选择、日期区间、i18n、退出动画。
 
 完整清单与简化边界见 [`docs/03-实现清单.md`](docs/03-实现清单.md)。

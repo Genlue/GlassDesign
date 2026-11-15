@@ -65,11 +65,35 @@ function encodePng(w, h, rgba) {
 
 // 形状固定：每个面取一个代表尺寸。尺寸变化时由 preserveAspectRatio="none" 拉伸。
 // 半径按该面的真实圆角给，不按比例缩放。
+//
+// `tier: true` 的条目是「显式档位」：只由调用方写 data-glass="<id>" 命中，
+// 因此可以把 width / height / box-sizing / border-radius 一起写死 ——
+// 贴图与元素边框盒必须逐像素一致，高度由内容决定的面不要加档（继续走 Auto）。
 const SHAPES = [
   { id: 'capsule-34', surface: 'capsule', w: 34, h: 34, r: 17, css: '.c-capsule--round', blur: 'var(--m-popover-blur)' },
   { id: 'capsule-112', surface: 'capsule', w: 112, h: 34, r: 17, css: '.c-capsule[data-size="112"]', blur: 'var(--m-popover-blur)' },
   { id: 'capsule-180', surface: 'capsule', w: 180, h: 34, r: 17, css: '.c-capsule[data-size="180"]', blur: 'var(--m-popover-blur)' },
   { id: 'thumb', surface: 'thumb', w: 24, h: 16, r: 8, css: '.c-slider__thumb', blur: 'var(--thumb-blur-px)' },
+
+  // L2 面板：r 对齐 --r-xl(18)，面板类本身不带圆角，档位里写死后才不会出现
+  // 「滤镜圆角 18、可视圆角 0」的错位。
+  { id: 'panel-320x220', surface: 'panel', w: 320, h: 220, r: 18, css: '.c-glass-panel[data-glass="panel-320x220"]', blur: 'var(--m-panel-blur)', tier: true },
+  { id: 'panel-480x320', surface: 'panel', w: 480, h: 320, r: 18, css: '.c-glass-panel[data-glass="panel-480x320"]', blur: 'var(--m-panel-blur)', tier: true },
+  { id: 'panel-640x420', surface: 'panel', w: 640, h: 420, r: 18, css: '.c-glass-panel[data-glass="panel-640x420"]', blur: 'var(--m-panel-blur)', tier: true },
+
+  // 菜单：r 对齐 --r-md(12)。宽度写死 240，高度按条目数选两档。
+  { id: 'menu-240x200', surface: 'menu', w: 240, h: 200, r: 12, css: '.c-menu[data-glass="menu-240x200"]', blur: 'var(--m-popover-blur)', tier: true },
+  { id: 'menu-240x280', surface: 'menu', w: 240, h: 280, r: 12, css: '.c-menu[data-glass="menu-240x280"]', blur: 'var(--m-popover-blur)', tier: true },
+
+  // 流程层：r 对齐 --r-window(20)。
+  { id: 'sheet-520x360', surface: 'sheet', w: 520, h: 360, r: 20, css: '.c-sheet[data-glass="sheet-520x360"]', blur: 'var(--m-sheet-blur)', tier: true, unclamp: true },
+
+  // 提示条：尺寸按 14-toast.css 实测 —— 高恒为 34（不是 44），r = 17 即药丸。
+  // 模糊基数与 14-toast.css 的 `10px + 26px * --lg` 同式，blur-k 也照抄 0.9。
+  { id: 'toast-320x34', surface: 'toast', w: 320, h: 34, r: 17, css: '.c-toast[data-glass="toast-320x34"]', blur: 'calc(10px + 26px * var(--lg))', blurK: 0.9, tier: true },
+
+  // Dock 药丸跳过：宽高由条目数 + --dock-btn/--dock-gap/--dock-pad 决定，
+  // 竖排/横排又是两套高度，CSS 里没有可写死的确定尺寸。Dock 继续走 Auto 涂层。
 ];
 
 const MAX_MAP = 256;
@@ -107,15 +131,24 @@ ${built.map((b) => b.filter).join('\n')}
 const css = `/* 由 scripts/build-glass.mjs 生成，请勿手改。
    静态 SVG filter：位移 + 高光贴图在构建期算好，运行时没有 JavaScript。 */
 ${built
-  .map(
-    (b) => `${b.css} {
+  .map((b) => {
+    // 原有 4 档（胶囊/拇指）保持原样：尺寸由形状决定，不加 box-sizing。
+    // 新档位是 opt-in：只有 data-glass 命中时才写死边框盒，避免碰到默认布局。
+    const sizing = b.tier
+      ? `  box-sizing: border-box;
+  border-radius: ${b.r}px;
+  /* 尺寸档的前提是「元素真的这么大」：flex 子项默认会缩，缩了贴图就对不上。 */
+  flex: none;
+${b.unclamp ? '  /* 只有档位自己说了算：max-width/height 会把它压回可变尺寸。 */\n  max-width: none;\n  max-height: none;\n' : ''}`
+      : `  justify-content: center;
+`;
+    return `${b.css} {
   width: ${b.w}px;
   height: ${b.h}px;
-  justify-content: center;
-  -webkit-backdrop-filter: blur(calc(${b.blur} * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-${b.id});
-  backdrop-filter: blur(calc(${b.blur} * var(--glass-blur-k, 1))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-${b.id});
-}`
-  )
+${sizing}  -webkit-backdrop-filter: blur(calc(${b.blur} * var(--glass-blur-k, ${b.blurK ?? 1}))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-${b.id});
+  backdrop-filter: blur(calc(${b.blur} * var(--glass-blur-k, ${b.blurK ?? 1}))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-${b.id});
+}`;
+  })
   .join('\n\n')}
 `;
 

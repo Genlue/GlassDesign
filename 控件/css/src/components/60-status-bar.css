@@ -562,3 +562,39 @@
 .c-statusbar[data-narrow="1"] .c-statusbar__pct {
   min-width: 0;
 }
+
+/* ==========================================================================
+   P3-E1 追加（状态项）
+   —— 原分区只给任务行（__task / __row）认 data-tone，状态项没有着色规则，
+      那颗 live 点永远是 currentColor（灰），「已连接 / 已断开」只能靠字读。
+   —— 可点状态项在 Rust 侧是 div + role="button"（旧库也是 div；换成 <button>
+      要重置 UA 的边框/底色/字体，反而更脏），所以这里补焦点环与按压反馈。
+   ========================================================================== */
+
+.c-statusbar__item[data-tone="accent"] .c-statusbar__dot {
+  background: var(--accent);
+}
+
+.c-statusbar__item[data-tone="success"] .c-statusbar__dot {
+  background: var(--success);
+}
+
+.c-statusbar__item[data-tone="warning"] .c-statusbar__dot {
+  background: var(--warning);
+}
+
+.c-statusbar__item[data-tone="danger"] .c-statusbar__dot {
+  background: var(--danger);
+}
+
+/* 不可点的项不该亮：只给真正挂了 role="button" 的行反馈 */
+.c-statusbar__item[role="button"]:hover {
+  background: var(--surface-control-active);
+}
+
+.c-statusbar__item[role="button"]:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: -2px;
+  border-radius: var(--r-xs);
+}
+

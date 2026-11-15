@@ -395,3 +395,13 @@
   pointer-events: none;
   opacity: 0.55;
 }
+
+/* ---------------- 补充（P3-B2） ---------------- */
+
+/* 屏幕取色按钮在能力探测失败时常驻但禁用：灰按钮比「时有时无」好解释，
+   而且读屏能念出 title 里的原因。原生 disabled 不会自己降透明度。 */
+.c-colorpicker__eyedropper:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+

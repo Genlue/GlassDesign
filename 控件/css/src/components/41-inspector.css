@@ -181,3 +181,77 @@
   white-space: nowrap;
 }
 
+/* ==========================================================================
+   P3-E1 追加（检查器 / 属性表 / 大纲）
+   —— 原分区只定了「纯文本值」和「1–6 级大纲」，下面补 Rust 侧真正用到的三种状态。
+   ========================================================================== */
+
+/* 顶栏页签：Rust 不画 .c-seg__ind（那是旧库的 JS 测量滑块），
+   选中项就只剩「--text-on-accent 白字 + 透明底」，浅色主题下读不出来。
+   只在检查器作用域内补一块实心强调底，不动全局 .c-seg。 */
+.c-inspector__tabs .c-seg__opt[aria-checked="true"],
+.c-inspector__tabs .c-seg__opt[aria-checked="true"]:hover {
+  background: var(--accent);
+}
+
+/* 属性行的值区现在会放控件（开关 / 滑块 / 下拉），不再是纯文本：
+   改成靠右的横向盒子，控件按自身宽度排；上限避免长标签把值挤没。
+   等宽值（.is-mono）保持块级 —— 它依赖 overflow + ellipsis，flex 容器里失效。 */
+.c-props__value {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--s-2);
+  max-width: 66%;
+}
+
+.c-props__value.is-mono {
+  display: block;
+  max-width: none;
+}
+
+/* baseline 对齐只对「两边都是文字」成立：值区放 34px 高的滑块时没有文字基线，
+   整行会按滑块的底边对齐，标签被压到行底，行高也翻倍。
+   单行文字行居中和 baseline 看起来一样，所以统一改居中。 */
+.c-props__row {
+  align-items: center;
+}
+
+/* 大纲缩进改由 --depth 驱动。原来的 data-level 只分到 6 档，且 4–6 共用 36px，
+   层级再深就读不出结构；--depth 是 12px 一级的连续量。选择器带 [data-level]
+   才压得过上面那几条同特异性的分档规则（本文件排在它们之后）。 */
+.c-outline__item[data-level] {
+  padding-left: calc(var(--s-3) + var(--depth, 0) * 12px);
+}
+
+/* 行首图标：大纲行本身没有 gap，不给外边距图标会贴着文字。 */
+.c-outline__item > .ic {
+  flex: none;
+  margin-right: var(--s-2);
+  color: var(--text-quaternary);
+}
+
+/* 键盘焦点环：大纲走 roving tabindex，焦点落在哪一行必须看得见
+   （原来只有 hover 与 data-active 两态）。 */
+.c-outline__item:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: -2px;
+  border-radius: var(--r-xs);
+}
+
+
+
+/* 行首图标位：有图标与无图标混排时，必须占同样的宽，
+   否则文字起始线相差一个图标宽（13px + gap），层级看不住。 */
+.c-outline__lead {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  width: 13px;
+  margin-right: var(--s-2);
+}
+
+.c-outline__lead:empty {
+  visibility: hidden;
+}

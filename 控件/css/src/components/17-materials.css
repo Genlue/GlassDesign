@@ -113,3 +113,18 @@
   pointer-events: none;
 }
 
+/* --------------------------------------------------------------------------
+   玻璃尺寸档（P3-A）—— opt-in，不是默认布局
+   —— 贴图尺寸必须与元素边框盒逐像素一致（feImage 不按元素框拉伸），
+      所以只有「调用方能保证宽高」的面才进档位表：panel / menu / sheet / toast。
+      Dialog、Popover、Inspector 的高度由内容决定，**不要**加档，继续走 Auto。
+
+   档位规则全部在生成文件 `63-glass-svg.css` 里，选择器形如
+   `.c-glass-panel[data-glass="panel-480x320"]`：命中时才写死
+   width / height / box-sizing / border-radius，并套上 url(#gd-glass-…)。
+   `border-radius` 必须与 build-glass.mjs 里该档的 `r` 完全一致，
+   否则滤镜圆角停在 18px、可视圆角停在 12px，会看到一圈「双重边」。
+
+   没有 data-glass 的元素不受任何影响：本文件里的基础类仍只负责涂层与模糊。
+   -------------------------------------------------------------------------- */
+

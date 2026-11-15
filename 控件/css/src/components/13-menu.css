@@ -119,3 +119,12 @@
   pointer-events: none;
 }
 
+/* 菜单超过一屏、或命中玻璃档（menu-240x280 把高度写死 280）时，项多了要能滚。
+   没有这条时基础规则里的 overflow:hidden 会把多出来的项**无声切掉** ——
+   菜单看起来「只有 6 项」，用户完全不知道下面还有。 */
+.c-menu {
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+

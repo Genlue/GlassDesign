@@ -2,6 +2,7 @@ use leptos::html;
 use leptos::prelude::*;
 
 use crate::base::icon::{Icon, IconName};
+use crate::base::overlay::{OverlayHost, OverlayId, OverlayKind};
 
 #[component]
 pub fn Dialog(
@@ -15,29 +16,68 @@ pub fn Dialog(
     #[prop(optional)] actions: Option<Children>,
 ) -> impl IntoView {
     let dialog_ref = NodeRef::<html::Div>::new();
+    let host = OverlayHost::use_or_provide();
+    let layer = RwSignal::new(None::<OverlayId>);
+    // 二级起遮罩要更浅：由栈深决定，不再写死 data-level="1"。
+    let level = RwSignal::new(1usize);
     let is_open = move || open.get().unwrap_or(false);
     let width = if width == 0 { 300 } else { width };
-
-    Effect::new(move |_| {
-        if is_open() {
-            if let Some(el) = dialog_ref.get() {
-                let _ = el.focus();
-            }
-        }
-    });
 
     let close = move || {
         if let Some(cb) = on_close {
             cb.run(());
         }
     };
+
+    // 入栈/出栈跟着 open 走。z、Esc、inert、焦点全部交给 OverlayHost。
+    Effect::new({
+        let host = host.clone();
+        move |_| {
+            if is_open() {
+                if layer.get_untracked().is_none() {
+                    let dismiss = if dismissible {
+                        Callback::new(move |_| close())
+                    } else {
+                        // 不可关闭的模态：仍然入栈（挡住下层），Esc 被吞掉但不关。
+                        Callback::new(|_| {})
+                    };
+                    let id = host.push(OverlayKind::Dialog, dismiss);
+                    level.set(host.depth());
+                    layer.set(Some(id));
+                }
+                if let Some(el) = dialog_ref.get() {
+                    if let Some(id) = layer.get_untracked() {
+                        host.bind(id, el.into());
+                    }
+                }
+            } else if let Some(id) = layer.get_untracked() {
+                host.remove(id);
+                layer.set(None);
+            }
+        }
+    });
+
+    on_cleanup({
+        let host = host.clone();
+        move || {
+            if let Some(id) = layer.get_untracked() {
+                host.remove(id);
+            }
+        }
+    });
+
     let has_head = !title.is_empty() || !description.is_empty();
 
     view! {
         <div
                     class="c-dialog-scrim"
-                    style=move || if is_open() { "z-index:500" } else { "display:none" }
-                    data-level="1"
+                    style=move || if is_open() {
+                        let z = layer.get().map(|id| host.z(id)).unwrap_or(OverlayKind::Dialog.base_z());
+                        format!("z-index:{z}")
+                    } else {
+                        "display:none".to_string()
+                    }
+                    data-level=move || level.get().to_string()
                     on:pointerdown=move |ev| {
                         if !dismissible {
                             return;
@@ -56,12 +96,6 @@ pub fn Dialog(
                         style=format!("--dlg-w:{width}px")
                         tabindex="-1"
                         node_ref=dialog_ref
-                        on:keydown=move |ev: web_sys::KeyboardEvent| {
-                            if ev.key() == "Escape" && dismissible {
-                                ev.prevent_default();
-                                close();
-                            }
-                        }
                     >
                         {has_head.then(|| view! {
                             <div class="c-dialog__head">

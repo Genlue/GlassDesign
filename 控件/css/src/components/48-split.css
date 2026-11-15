@@ -164,6 +164,50 @@
   min-height: var(--pane-min, 0px);
 }
 
+/* ==========================================================================
+   P3-E1 追加（无测量比例分栏）
+   —— Rust 侧只往根节点写一个 --split（0..1），两栏宽度在这里算出来。
+   —— 百分比 flex-basis 直接对容器主轴求值，所以拖动时不需要同步测量容器，
+      也不会出现「先量后改」那一帧的跳动；窗口缩放两栏一起跟着缩放。
+   —— 9px 是分隔条命中区（见上面 .c-split__sep 的 flex: 0 0 9px），
+      先扣掉它两栏才刚好铺满，否则永远差一条缝。
+   —— 折叠时 Rust 把 --split 写成 0，第一栏占 0 且 display:none，
+      第二栏自然吃满，不需要再写「谁被折叠」的分支。
+   ========================================================================== */
+
+.c-split[data-ratio="1"] > .c-split__pane[data-slot="a"] {
+  --pane-size: calc((100% - 9px) * var(--split, 0.5));
+}
+
+.c-split[data-ratio="1"] > .c-split__pane[data-slot="b"] {
+  --pane-size: calc((100% - 9px) * (1 - var(--split, 0.5)));
+}
+
+/* 横向分栏在定高容器里要铺满：两栏的高度就是容器高度，
+   否则分隔条只到「内容高度」，上下会各留一截空白。
+   父级高度不确定时 100% 自动退化成 auto，不会把内容压扁。 */
+.c-split[data-axis="x"][data-ratio="1"] {
+  height: 100%;
+}
+
+/* 展开 / 折叠按钮压在 9px 命中区正中：常驻会把最顺手的拖动位置挡掉。
+   所以展开态把它降级成「悬停或键盘聚焦才出现」；折叠态它是唯一入口，常亮。 */
+.c-split__expand {
+  transition: background-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out), opacity var(--dur-1) var(--ease-out);
+}
+
+.c-split__expand[data-idle="1"] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.c-split__sep:hover .c-split__expand[data-idle="1"],
+.c-split__sep:focus-within .c-split__expand[data-idle="1"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 /* 拖动期间光标由 43-resizer.css 的 html[data-resizing] 统一接管，
    这里只补一条：拖的时候不要选中面板里的文字。 */
 @media (prefers-reduced-motion: reduce) {
@@ -172,3 +216,4 @@
     transition-duration: 1ms;
   }
 }
+

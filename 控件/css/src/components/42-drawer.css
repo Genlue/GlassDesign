@@ -199,3 +199,10 @@
   padding: 0 var(--s-7) var(--s-7) var(--s-9);
 }
 
+/* 没有抓握条、也没有标题栏的左右抽屉：body 是 sheet 的第一个孩子，
+   原来的上内边距是 0，内容会贴着窗口上沿像被裁掉一截。只在 body 打头时补，
+   bottom/top 抽屉的第一个孩子是抓握条，不受影响。 */
+.c-drawer__sheet > .c-drawer__body:first-child {
+  padding-top: var(--s-7);
+}
+

@@ -377,3 +377,35 @@
   display: none;
 }
 
+/* --------------------------------------------------------------------------
+   列拖拽属性映射（P3-C 追加）
+   —— DOM 契约用 data-drag="1" / data-drop="before|after"；视觉规则沿用
+      上面的 .is-dragging / .is-drop-*，这里只做「属性 → 视觉」的映射，
+      不新增任何尺寸或颜色。
+   -------------------------------------------------------------------------- */
+
+.c-datatable[data-drag="1"],
+.c-datatable[data-drag="1"] .c-datatable__row {
+  user-select: none;
+}
+
+.c-datatable[data-drag="1"] {
+  cursor: grabbing;
+}
+
+.c-datatable__th[data-drop="before"] {
+  box-shadow: inset 2px 0 var(--accent);
+}
+
+.c-datatable__th[data-drop="after"] {
+  box-shadow: inset -2px 0 var(--accent);
+}
+
+/* 表头本身可聚焦（Alt+←/→ 换列），焦点环不能靠浏览器默认样式：
+   它会被 sticky 背景吃掉，键盘用户看不到自己在哪一列。 */
+.c-datatable__th:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: -2px;
+}
+
+

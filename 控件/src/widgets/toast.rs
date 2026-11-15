@@ -4,6 +4,7 @@ use leptos::prelude::*;
 use wasm_bindgen::JsCast;
 
 use crate::base::icon::{Icon, IconName};
+use crate::base::overlay::Z_TOAST;
 use crate::widgets::inline_message::Tone;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -68,7 +69,9 @@ fn schedule_remove(signal: RwSignal<Vec<ToastItem>>, id: u32) {
 pub fn ToastHost() -> impl IntoView {
     let signal = TOASTS.with(|s| *s);
     view! {
-        <div class="c-toast-host" role="status" aria-live="polite" data-layer-ignore="">
+        // 层级来自宿主常量表：提示条不参与 Esc 栈，但必须压在模态遮罩之上。
+        <div class="c-toast-host" role="status" aria-live="polite" data-layer-ignore=""
+            style=format!("z-index:{Z_TOAST}")>
             <For each=move || signal.get() key=|t| t.id let:item>
                 <div class="c-toast-slot">
                     <div class=format!("c-toast c-toast--{}", match item.tone {
