@@ -3,3 +3,5 @@
 /.shots*
 /.tmp-*
 node_modules
+
+/应用/src-tauri/gen
