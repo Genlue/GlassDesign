@@ -4,8 +4,8 @@ Tauri 2 + Rust 的桌面界面库。
 
 库里只有一个可复制单元：`控件/`。整个文件夹拷进别的项目，加一行 path 依赖，调一次 `install()`，就能用 `view!` 拼界面；升级时用新文件夹覆盖旧文件夹。
 
-> **状态：P1 骨架已落地**（2026-11-15）。
-> 可以编译、可以开 Tauri 窗口、可以用 `view!` 拼出画廊；玻璃材质改为**构建期预计算贴图 + 静态 SVG filter**，运行时没有 JavaScript、canvas 或 WebGL。
+> **状态：P2 基础控件已落地**（2026-11-15）。
+> 47 个 Rust 组件、五个画廊分区、Tauri 2 宿主；玻璃材质为**构建期预计算贴图 + 静态 SVG filter**，运行时没有 JavaScript、canvas 或 WebGL。
 
 ---
 
@@ -63,7 +63,8 @@ GlassDesign/
 ├── docs/
 │   ├── 00-探索-脉络.md         现状、判断、选型、风险、路线
 │   ├── 01-控件契约.md          声明式 API：props / 受控 / 插槽 / 生命周期
-│   └── 02-迁移矩阵.md          84 个工厂 → Rust 组件的分批与难度
+│   ├── 02-迁移矩阵.md          84 个工厂 → Rust 组件的分批与难度
+│   └── 03-实现清单.md          47 个已实现组件、简化边界与验证记录
 ├── 控件/                      ← 唯一复制单元
 │   ├── Cargo.toml
 │   ├── src/                   Rust 组件
@@ -110,6 +111,8 @@ cargo build -p glass-design-app
 
 ## 下一步
 
-P2：Segmented、Checkbox、RadioGroup、Slider、RangeSlider、TextArea、SearchField、Stepper、NumberField、Badge、Chip、Avatar、ProgressRing、Progress、Spinner、Skeleton、Empty、InlineMessage、List、Table、Tile、MediaTile、Disclosure。
+P2 已完成：Button / IconButton / Field / Switch / Segmented / Checkbox / RadioGroup / Slider / Stepper / NumberField / TextArea / SearchField / Select / FormField / Badge / Chip / Avatar / ProgressRing / Progress / Spinner / Skeleton / Empty / InlineMessage / List / Table / Disclosure / Tabs / Breadcrumb / Pagination / Dialog / Toast / Capsule / AppShell / NavColumn / Toolbar。
 
-出口条件：每个控件有活体样例 + 键盘断言；Slider 拖拽与玻璃拇指不回归。排期见主报告 §13。
+P3 待做：RangeSlider、Combobox、DatePicker / TimePicker、FilePicker / DropZone、TokenField、ColorWell / Swatches、DataTable / TreeView / CollectionView、独立 Menu / Popover / Tooltip、Drawer / Sheet、Inspector / SplitView / StatusBar。
+
+完整清单与简化边界见 [`docs/03-实现清单.md`](docs/03-实现清单.md)。

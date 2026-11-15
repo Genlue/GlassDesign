@@ -2,7 +2,7 @@
 
 这个文件夹整个拷进别的项目就能用；升级时用新文件夹覆盖它。
 
-> **P1 骨架已落地。** 现在有 `Cargo.toml`、`src/`、`css/`、`assets/`，可以编译、可以拼画廊。
+> **P2 基础控件已落地。** 现在有 `Cargo.toml`、`src/`、`css/`、`assets/`，47 个组件可以编译、可以拼画廊。
 > 材质改为**构建期预计算贴图 + 静态 SVG filter**，运行时没有 JavaScript。
 
 ---
@@ -138,10 +138,10 @@ view! {
 | 项 | 状态 |
 |---|---|
 | 目录契约 | 已定（本文件） |
-| Rust 组件 | P1：Button / IconButton / Field / Switch / Card / Row / SectionTitle / Divider / AppShell / Main / ScrollArea / NavColumn / NavGroup / NavSection / NavItem / Toolbar / ToolbarLead / ToolbarPills / ToolbarTitle / Capsule |
-| CSS 迁移 | tokens / optics / base / layout + 63 个分区已进 `css/src`；`24-glass-renderer` 停用 |
+| Rust 组件 | P2：47 个（按钮/表单/选择/列表/表格/页签/分页/对话框/提示条/导航骨架），清单见 `../docs/03-实现清单.md` |
+| CSS 迁移 | tokens / optics / base / layout + 64 个分区已进 `css/src`；`24-glass-renderer` 停用 |
 | 静态材质 | 胶囊 34/112/180 + 滑块拇指；构建期贴图，运行时无 JS |
-| 示例应用 | 画廊跑通（浅色/深色、导航、主题切换） |
+| 示例应用 | 五个分区画廊跑通（基础/表单/数据/导航/浮层），浅色/深色与交互已验证 |
 | Tauri 宿主 | 可编译；透明窗口/无边框待实机截图 |
 | `index.html` | P1 静态视觉快照已生成 |
 

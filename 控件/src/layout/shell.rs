@@ -1,11 +1,12 @@
 use leptos::prelude::*;
 
 use crate::base::icon::{Icon, IconName};
+use crate::widgets::toast::ToastHost;
 
 /// 应用外壳。`.l-app` 负责圆角、外影与两栏布局。
 #[component]
 pub fn AppShell(children: Children) -> impl IntoView {
-    view! { <div class="l-app">{children()}</div> }
+    view! { <div class="l-app">{children()}<ToastHost /></div> }
 }
 
 /// 主内容列（顶栏之下）。

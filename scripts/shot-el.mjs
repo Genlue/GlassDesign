@@ -64,6 +64,10 @@ async function main() {
   await send('Page.enable');
   await send('Runtime.enable');
   await sleep(1800);
+  await send('Runtime.evaluate', {
+    expression: `(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (el) el.scrollIntoView({block:'center'}); return !!el; })()`,
+  }).catch(() => null);
+  await sleep(350);
   const r = await send('Runtime.evaluate', {
     expression: `(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return null; const b = el.getBoundingClientRect(); return {x:b.x,y:b.y,w:b.width,h:b.height}; })()`,
     returnByValue: true,

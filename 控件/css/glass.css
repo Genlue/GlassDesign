@@ -10496,3 +10496,12 @@ html[data-resizing] {
 }
 
 
+/* ===== components/64-slider-leptos.css ===== */
+/* 无测量滑块布局：thumb 的位移不再依赖 JS 写入的 --travel，
+   改用 left 的百分比表达式。其余光学样式仍在 04-slider.css。 */
+.c-slider__thumb {
+  left: calc(var(--thumb-w) / 2 + (100% - var(--thumb-w)) * var(--p));
+  transform: scale(var(--thumb-s));
+}
+
+

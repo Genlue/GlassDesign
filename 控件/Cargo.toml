@@ -12,4 +12,5 @@ js-sys = "0.3"
 web-sys = { version = "0.3", features = [
   "Document", "Element", "Node", "Window", "HtmlElement", "HtmlInputElement",
   "HtmlStyleElement", "Storage", "MediaQueryList", "CssStyleDeclaration",
+  "PointerEvent", "DomRect", "HtmlDivElement", "HtmlButtonElement",
 ] }
