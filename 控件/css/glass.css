@@ -6182,6 +6182,37 @@ html[data-resizing] {
   }
 }
 
+/* --------------------------------------------------------------------------
+   P4 虚拟窗口（追加）
+   —— `data-virtual="1"` 只在「virtual_row_height + max_height」都给了时出现，
+      非虚拟路径的 DOM 与样式完全不变。
+   —— 容器自己成为滚动视口；行高由内联 `--tree-row-h` 钉死（Rust 的窗口数学
+      读的是同一个数），上下两个 spacer 撑出未渲染的行。
+   -------------------------------------------------------------------------- */
+
+.c-tree[data-virtual="1"] {
+  overflow-y: auto;
+  max-height: var(--tree-max-h);
+  /* 窗口是「整块换内容」的：撑高行一次长高几千像素，浏览器的滚动锚定
+     会再补一次同样的距离，滚一下就跳两倍。虚拟模式下关掉它。 */
+  overflow-anchor: none;
+}
+
+/* 焦点行被滚出渲染窗口时焦点会落到容器上（见 tree_view.rs），
+   没有环的话键盘用户不知道 Tab 停在哪。 */
+.c-tree[data-virtual="1"]:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: -2px;
+}
+
+/* spacer 只是撑高：不能参与收缩（否则 max-height 会把它们压扁，
+   滚动高度就比真实内容短），也不该吃指针事件。 */
+.c-tree[data-virtual="1"] .c-tree__spacer {
+  flex: none;
+  pointer-events: none;
+}
+
+
 
 /* ===== components/45-collection.css ===== */
 /* ==========================================================================
@@ -6326,6 +6357,42 @@ html[data-resizing] {
 /* 空态要独占一整行，否则会被挤进第一格 */
 .c-collection[data-static="1"] .c-collection__empty {
   grid-column: 1 / -1;
+}
+
+/* --------------------------------------------------------------------------
+   P4 虚拟窗口（追加）
+   —— `data-virtual="1"` 只在「virtual_row_height + max_height」都给了时出现，
+      并且继续沿用上面 data-static 的静态 grid：列宽、gap、圆角、选中底色
+      全部来自同一批规则，视觉与非虚拟版本不会分叉。
+   —— 只有两件事是虚拟模式新增的：
+      · 行高钉死：项高 = 行距 - gap，窗口数学（Rust）与 CSS 共用 --item-pitch；
+      · 上下两个撑高行，高度用 --rows 在 CSS 里算，gap 只在 CSS 定义一次。
+   -------------------------------------------------------------------------- */
+
+.c-collection[data-virtual="1"] {
+  max-height: var(--collection-max-h);
+  /* 窗口是「整块换内容」的：撑高行一次长高几千像素，浏览器的滚动锚定
+     会再补一次同样的距离，滚一下就跳两倍。虚拟模式下关掉它。 */
+  overflow-anchor: none;
+}
+
+.c-collection[data-virtual="1"] .c-collection__item {
+  /* 项高 = 行距 - 一个 gap：行距是 CSS 与 Rust 唯一的共识 */
+  height: calc(var(--item-pitch) - var(--s-2));
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 撑高行跨满整行。N 行的高度是 N * 行距 - gap：紧跟其后的那个 gap 会把它
+   补回整行距；N=0 时高度会是负数，所以直接不渲染盒子（否则会白占一个 gap）。 */
+.c-collection[data-virtual="1"] .c-collection__pad {
+  grid-column: 1 / -1;
+  height: calc(var(--item-pitch) * var(--rows) - var(--s-2));
+  pointer-events: none;
+}
+
+.c-collection[data-virtual="1"] .c-collection__pad[data-rows="0"] {
+  display: none;
 }
 
 

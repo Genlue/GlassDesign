@@ -22,6 +22,7 @@ use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 
 use crate::base::icon::{Icon, IconName};
+use crate::base::virtual_window::{self, Window};
 use crate::widgets::progress::Skeleton;
 use crate::widgets::selection::{SelectionMode, SelectionState};
 use crate::widgets::table::SortDir;
@@ -112,7 +113,6 @@ impl DataTableRow {
 /// 默认宽度。与旧库一致，避免调用方不写宽度时列被内容反推。
 const DEFAULT_COL_WIDTH: f64 = 160.0;
 /// 虚拟窗口上下各多渲染几行：抵消快速滚动时的一帧空白。
-const OVERSCAN: usize = 6;
 
 fn normalize_width(col: &DataColumn) -> f64 {
     let min = if col.min_width > 0.0 { col.min_width } else { 1.0 };
@@ -249,14 +249,14 @@ pub fn DataTable(
 
     /* ---------------------------------------------------------- 虚拟窗口 */
 
-    let win = RwSignal::new((0usize, if virtual_mode { 18 } else { row_count }));
+    // 窗口算法在 `base/virtual_window`：树与集合复用同一份，边界只在那边维护。
+    let win = RwSignal::new(if virtual_mode {
+        Window::new(0, 18.min(row_count))
+    } else {
+        Window::full(row_count)
+    });
 
-    let clamp_win = move || {
-        let n = row_count;
-        let (s, e) = win.get();
-        let s = s.min(n);
-        (s, e.max(s).min(n))
-    };
+    let clamp_win = move || virtual_window::clamp(win.get(), row_count);
 
     let win_rows = rows.clone();
     let win_cols = columns.clone();
@@ -265,8 +265,7 @@ pub fn DataTable(
             return sorted_rows(&win_rows, &win_cols, sort.get());
         }
         let all = sorted_rows(&win_rows, &win_cols, sort.get());
-        let (s, e) = clamp_win();
-        all[s..e].to_vec()
+        all[clamp_win().slice()].to_vec()
     });
 
     let on_scroll = move |_| {
@@ -276,13 +275,9 @@ pub fn DataTable(
         let Some(el) = scroll_ref.get_untracked() else {
             return;
         };
-        let top = el.scroll_top() as f64;
-        let view_h = el.client_height() as f64;
-        let start = ((top / row_h).floor() as isize - OVERSCAN as isize).max(0) as usize;
-        let end = (((top + view_h) / row_h).ceil() as usize + OVERSCAN).min(row_count);
-        let end = end.max(start);
-        if win.get_untracked() != (start, end) {
-            win.set((start, end));
+        let next = virtual_window::window_of(&el, row_h, row_count, virtual_window::OVERSCAN);
+        if win.get_untracked() != next {
+            win.set(next);
         }
     };
 
@@ -542,7 +537,7 @@ pub fn DataTable(
                                     class="c-datatable__spacer"
                                     aria-hidden="true"
                                     style=move || {
-                                        let (start, _) = clamp_win();
+                                        let start = clamp_win().start();
                                         format!("height:{}px", start as f64 * row_h)
                                     }
                                 >
@@ -572,7 +567,7 @@ pub fn DataTable(
                                     class="c-datatable__spacer"
                                     aria-hidden="true"
                                     style=move || {
-                                        let (_, end) = clamp_win();
+                                        let end = clamp_win().end();
                                         format!(
                                             "height:{}px",
                                             (row_count.saturating_sub(end)) as f64 * row_h,

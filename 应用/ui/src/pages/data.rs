@@ -157,6 +157,43 @@ pub fn DataPage() -> impl IntoView {
         })
         .collect();
 
+    /* ------------------------------------------ P4 万级数据：虚拟滚动样例 */
+
+    // 3 层 × 循环生成：20 组 × 9 目录 × 10 文件 + 200 个父行 = 2000 个可见行。
+    let big_tree_selected = RwSignal::new("g0".to_string());
+    let big_tree: Vec<TreeNode> = (0..20)
+        .map(|g| {
+            TreeNode::new(format!("g{g}"), format!("模块 {g:02}"))
+                .icon(IconName::FOLDER)
+                .children(
+                    (0..9)
+                        .map(|d| {
+                            TreeNode::new(format!("g{g}-d{d}"), format!("目录 {d:02}"))
+                                .icon(IconName::FOLDER)
+                                .children(
+                                    (0..10)
+                                        .map(|f| {
+                                            TreeNode::new(
+                                                format!("g{g}-d{d}-f{f}"),
+                                                format!("文件 {f:02}.rs"),
+                                            )
+                                            .icon(IconName::FILE_TEXT)
+                                        })
+                                        .collect(),
+                                )
+                        })
+                        .collect(),
+                )
+        })
+        .collect();
+
+    let big_items: Vec<CollectionItem> = (0..2000)
+        .map(|i| {
+            CollectionItem::new(format!("b{i}"), format!("资源 {i:04}"))
+                .subtitle(format!("{} 项", (i * 7) % 40 + 1))
+        })
+        .collect();
+
     view! {
         <div class="l-scroll" style="padding:24px 32px 64px">
             <div class="l-stack l-stack--6">
@@ -301,6 +338,44 @@ pub fn DataPage() -> impl IntoView {
                                         items=list_items
                                         layout=CollectionLayout::List
                                         label="序列"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+
+                <div class="l-stack l-stack--3">
+                    <SectionTitle>"万级数据（虚拟滚动）"</SectionTitle>
+                    <Card>
+                        <div class="l-pad">
+                            <div class="l-stack l-stack--6">
+                                <div class="l-stack l-stack--3">
+                                    <p class="c-subtitle">
+                                        "树：2000 行（20 组 × 9 目录 × 10 文件），视口 320px、行高 26px；只渲染窗口 ± 6 行，↑↓←→ / Home / End / Enter 可用。"
+                                    </p>
+                                    <TreeView
+                                        nodes=big_tree
+                                        default_open=true
+                                        max_height=320.0
+                                        virtual_row_height=26.0
+                                        selected=Signal::derive(move || big_tree_selected.get())
+                                        on_select=Callback::new(move |k| big_tree_selected.set(k))
+                                        label="大文件树"
+                                    />
+                                </div>
+                                <div class="l-stack l-stack--3">
+                                    <p class="c-subtitle">
+                                        "网格：2000 项 / 3 列 / 667 行，视口 360px、行距 52px（项高 48 + 间距 4）；只渲染窗口 ± 6 行，Ctrl / Shift 与方向键按全量下标算。"
+                                    </p>
+                                    <CollectionView
+                                        items=big_items
+                                        layout=CollectionLayout::Grid
+                                        columns=3
+                                        selection=SelectionMode::Multiple
+                                        max_height=360.0
+                                        virtual_row_height=52.0
+                                        label="大资源网格"
                                     />
                                 </div>
                             </div>

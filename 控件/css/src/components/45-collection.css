@@ -142,3 +142,39 @@
   grid-column: 1 / -1;
 }
 
+/* --------------------------------------------------------------------------
+   P4 虚拟窗口（追加）
+   —— `data-virtual="1"` 只在「virtual_row_height + max_height」都给了时出现，
+      并且继续沿用上面 data-static 的静态 grid：列宽、gap、圆角、选中底色
+      全部来自同一批规则，视觉与非虚拟版本不会分叉。
+   —— 只有两件事是虚拟模式新增的：
+      · 行高钉死：项高 = 行距 - gap，窗口数学（Rust）与 CSS 共用 --item-pitch；
+      · 上下两个撑高行，高度用 --rows 在 CSS 里算，gap 只在 CSS 定义一次。
+   -------------------------------------------------------------------------- */
+
+.c-collection[data-virtual="1"] {
+  max-height: var(--collection-max-h);
+  /* 窗口是「整块换内容」的：撑高行一次长高几千像素，浏览器的滚动锚定
+     会再补一次同样的距离，滚一下就跳两倍。虚拟模式下关掉它。 */
+  overflow-anchor: none;
+}
+
+.c-collection[data-virtual="1"] .c-collection__item {
+  /* 项高 = 行距 - 一个 gap：行距是 CSS 与 Rust 唯一的共识 */
+  height: calc(var(--item-pitch) - var(--s-2));
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 撑高行跨满整行。N 行的高度是 N * 行距 - gap：紧跟其后的那个 gap 会把它
+   补回整行距；N=0 时高度会是负数，所以直接不渲染盒子（否则会白占一个 gap）。 */
+.c-collection[data-virtual="1"] .c-collection__pad {
+  grid-column: 1 / -1;
+  height: calc(var(--item-pitch) * var(--rows) - var(--s-2));
+  pointer-events: none;
+}
+
+.c-collection[data-virtual="1"] .c-collection__pad[data-rows="0"] {
+  display: none;
+}
+

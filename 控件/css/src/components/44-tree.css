@@ -215,3 +215,34 @@
     }
   }
 }
+
+/* --------------------------------------------------------------------------
+   P4 虚拟窗口（追加）
+   —— `data-virtual="1"` 只在「virtual_row_height + max_height」都给了时出现，
+      非虚拟路径的 DOM 与样式完全不变。
+   —— 容器自己成为滚动视口；行高由内联 `--tree-row-h` 钉死（Rust 的窗口数学
+      读的是同一个数），上下两个 spacer 撑出未渲染的行。
+   -------------------------------------------------------------------------- */
+
+.c-tree[data-virtual="1"] {
+  overflow-y: auto;
+  max-height: var(--tree-max-h);
+  /* 窗口是「整块换内容」的：撑高行一次长高几千像素，浏览器的滚动锚定
+     会再补一次同样的距离，滚一下就跳两倍。虚拟模式下关掉它。 */
+  overflow-anchor: none;
+}
+
+/* 焦点行被滚出渲染窗口时焦点会落到容器上（见 tree_view.rs），
+   没有环的话键盘用户不知道 Tab 停在哪。 */
+.c-tree[data-virtual="1"]:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: -2px;
+}
+
+/* spacer 只是撑高：不能参与收缩（否则 max-height 会把它们压扁，
+   滚动高度就比真实内容短），也不该吃指针事件。 */
+.c-tree[data-virtual="1"] .c-tree__spacer {
+  flex: none;
+  pointer-events: none;
+}
+
