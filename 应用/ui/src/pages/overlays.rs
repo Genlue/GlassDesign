@@ -59,6 +59,7 @@ pub fn OverlayPage() -> impl IntoView {
     let pop_right = RwSignal::new(false);
     let sheet_open = RwSignal::new(false);
     let drawer_open = RwSignal::new(false);
+    let tf_pop = RwSignal::new(false);
 
     let on_pick = Callback::new(move |id: String| {
         picked.set(id.clone());
@@ -70,7 +71,7 @@ pub fn OverlayPage() -> impl IntoView {
             <div class="l-stack l-stack--6">
                 <div class="l-stack l-stack--2">
                     <h1 class="c-headline">"浮层"</h1>
-                    <p class="c-subtitle">"对话框、菜单、气泡、提示、流程面板与抽屉。Esc / 遮罩 / 点外关闭，层级与焦点统一交给浮层栈。"</p>
+                    <p class="c-subtitle" style="white-space:normal">"对话框、菜单、气泡、提示、流程面板与抽屉。Esc / 遮罩 / 点外关闭，层级与焦点统一交给浮层栈。"</p>
                 </div>
 
                 <div class="l-stack l-stack--3">
@@ -184,6 +185,47 @@ pub fn OverlayPage() -> impl IntoView {
                                 <IconButton icon=IconName::BOOKMARK label="加入书签" />
                             </Tooltip>
                             <span class="c-subtitle">"悬停 400ms；聚焦立即出现。"</span>
+                        </div>
+                    </Card>
+                </div>
+
+                <div class="l-stack l-stack--3">
+                    <SectionTitle>"滤镜容器里"</SectionTitle>
+                    <Card>
+                        <div class="l-pad l-stack l-stack--3">
+                            // 这个容器带 `transform`，会给 `position: fixed` 造一个包含块。
+                            // 浮层如果没有 Portal 到 body，就会按这个盒子的坐标摆 —— 一眼能看出来。
+                            // 它同时是回归护栏：以后谁把 Portal 去掉，这一节先崩。
+                            <div
+                                style="transform:translateZ(0);max-width:560px;border:1px dashed var(--line-strong);border-radius:var(--r-md);padding:var(--s-4);background:var(--surface-sunken)"
+                            >
+                                <div class="l-row l-row--3" style="align-items:center;flex-wrap:wrap">
+                                    <Select
+                                        options=vec![
+                                            SelectOption::new("free", "免费版"),
+                                            SelectOption::new("pro", "专业版"),
+                                            SelectOption::new("team", "团队版"),
+                                        ]
+                                        label="套餐"
+                                        width=160
+                                    />
+                                    <MenuButton label="文件" icon=IconName::FILE_TEXT
+                                        items=file_menu() on_select=on_pick />
+                                    <Popover open=Signal::derive(move || tf_pop.get())
+                                        placement=PopoverPlacement::BottomStart
+                                        on_close=Callback::new(move |_| tf_pop.set(false))
+                                        label="容器内气泡"
+                                        trigger=Box::new(move || view! {
+                                            <Button label="容器内气泡"
+                                                on_click=Callback::new(move |_| tf_pop.set(true)) />
+                                        }.into_any())>
+                                        <span class="c-subtitle">"面板挂在 body 上，所以不受这个盒子的坐标影响。"</span>
+                                    </Popover>
+                                </div>
+                            </div>
+                            <span class="c-subtitle" style="white-space:normal">
+                                "容器带 transform → 它会给 position:fixed 造包含块。浮层一律 Portal 到 body 并按视口坐标定位，所以下拉/菜单/气泡仍贴着各自的触发器。"
+                            </span>
                         </div>
                     </Card>
                 </div>

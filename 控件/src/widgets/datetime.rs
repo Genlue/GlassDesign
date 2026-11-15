@@ -1,10 +1,16 @@
+use std::rc::Rc;
+
 use leptos::html;
+use leptos::portal::Portal;
 use leptos::prelude::*;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 
+use crate::base::anchor::{self, AnchorSpec, AnchorWatch};
 use crate::base::icon::{Icon, IconName};
-use crate::base::overlay::{OverlayHost, OverlayId, OverlayKind};
+use crate::base::overlay::{
+    listen_document, GlobalListener, OverlayHost, OverlayId, OverlayKind,
+};
 
 /* ==========================================================================
    日期 / 时间的整数运算
@@ -149,7 +155,9 @@ pub fn DatePicker(
 
     let open = RwSignal::new(false);
     let layer = RwSignal::new(None::<OverlayId>);
-    let pos = RwSignal::new((0.0f64, 0.0f64));
+    // 跟随句柄与点外监听：关闭时一起置 None，Drop 自动解绑。
+    let watch = StoredValue::new_local(None::<AnchorWatch>);
+    let outside = StoredValue::new_local(None::<GlobalListener>);
     let view = RwSignal::new({
         let t = today();
         (t.0, t.1)
@@ -215,11 +223,15 @@ pub fn DatePicker(
     };
 
     let close = move || {
+        // 先收起、再解绑：面板的 style 闭包依赖 open，先关掉能保证随后的
+        // 样式/栈变化不会擦掉已经写好的坐标。
+        open.set(false);
+        watch.set_value(None);
+        outside.set_value(None);
         if let Some(id) = layer.get_untracked() {
             host.remove(id);
             layer.set(None);
         }
-        open.set(false);
         // 关掉之后焦点回到触发器：键盘用户继续往下走
         if let Some(el) = trigger_ref.get() {
             let _ = el.focus();
@@ -257,14 +269,9 @@ pub fn DatePicker(
         let seed = clamp_day(seed.0, seed.1, seed.2);
         view.set((seed.0, seed.1));
         focus_day.set(seed);
-        if let Some(el) = trigger_ref.get() {
-            let r = el.get_bounding_client_rect();
-            pos.set((r.left(), r.bottom() + 6.0));
-        }
         let id = host.push(OverlayKind::Popover, Callback::new(move |_| close()));
         layer.set(Some(id));
         open.set(true);
-        restore(date_key(seed.0, seed.1, seed.2));
     };
 
     let toggle = move || {
@@ -334,6 +341,81 @@ pub fn DatePicker(
             .map(|id| host.z(id))
             .unwrap_or(OverlayKind::Popover.base_z())
     };
+
+    // 打开后定位：DOM 落定 → 量 → 摆 → 跟随。
+    // 这里再等一帧（rAF），是因为面板的 style 闭包（负责第一帧的
+    // `visibility:hidden;left:-10000px`）在本 effect 之后才生效 —— 同一帧里
+    // 先 apply 会被它整条 style 覆盖回视口外。等一帧后 style 已落定，apply 才留得住。
+    Effect::new(move |_| {
+        let anchor_el = trigger_ref
+            .get()
+            .map(|b| b.unchecked_into::<web_sys::Element>());
+        let panel = panel_ref.get();
+        if !open.get() {
+            watch.set_value(None);
+            outside.set_value(None);
+            return;
+        }
+        let (Some(anchor_el), Some(panel)) = (anchor_el, panel) else {
+            // Portal 还没挂好：NodeRef 是响应式的，挂上后会再跑一遍。
+            return;
+        };
+
+        // 点外关闭必须同时认**触发器和面板**两个子树：面板已经 Portal 到 body，
+        // 不在组件 DOM 里了，只查 root 会把「点面板内部」判成点外（日期格点不动）。
+        if outside.with_value(|v| v.is_none()) {
+            let trigger_key = trigger_ref;
+            let panel_key = panel_ref;
+            if let Some(listener) = listen_document("pointerdown", move |ev| {
+                let Some(target) = ev
+                    .target()
+                    .and_then(|t| t.dyn_into::<web_sys::Element>().ok())
+                else {
+                    return;
+                };
+                let node: &web_sys::Node = target.unchecked_ref();
+                let inside_trigger = trigger_key
+                    .get()
+                    .map(|t| t.contains(Some(node)))
+                    .unwrap_or(false);
+                let inside_panel = panel_key
+                    .get()
+                    .map(|p| p.contains(Some(node)))
+                    .unwrap_or(false);
+                if !inside_trigger && !inside_panel {
+                    close();
+                }
+            }) {
+                outside.set_value(Some(listener));
+            }
+        }
+
+        schedule(move || {
+            // 这一帧里可能已经关了（快速开→关）：别再建一个新的跟随句柄。
+            if !open.get_untracked() {
+                return;
+            }
+            if !anchor_el.is_connected() || !panel.is_connected() {
+                return;
+            }
+            // 面板固定 236 宽、不出滚动条；宽度不跟 148 宽的触发器走。
+            let spec = AnchorSpec {
+                match_width: false,
+                min_width: 236.0,
+                scroll: false,
+                ..AnchorSpec::bubble()
+            };
+            anchor::place_and_apply(&anchor_el, &panel, spec);
+            // 定位完成、面板已显形之后再搬焦点：第一帧它是 visibility:hidden，
+            // 直接 focus 会被浏览器忽略。焦点落到已选日的同时也把它滚进视口。
+            let (y, m, d) = focus_day.get_untracked();
+            restore(date_key(y, m, d));
+            // 锚点被滚出视口就收起：留一个挂在屏幕外的面板没有意义。
+            let on_gone: Rc<dyn Fn()> = Rc::new(move || close());
+            watch.set_value(Some(anchor::watch(anchor_el, panel.into(), spec, Some(on_gone))));
+        });
+    });
+
     let aria_label = if label.is_empty() {
         "日期".to_string()
     } else {
@@ -346,6 +428,8 @@ pub fn DatePicker(
     };
 
     on_cleanup(move || {
+        watch.set_value(None);
+        outside.set_value(None);
         if let Some(id) = layer.get_untracked() {
             host.remove(id);
         }
@@ -377,30 +461,26 @@ pub fn DatePicker(
                 </span>
             </button>
 
-            // 点外关闭：触发器本身也是「外面」，再点一次等于收起（和 Select 一致）
-            <div
-                style=move || if open.get() {
-                    format!("position:fixed;inset:0;z-index:{}", layer_z() - 1)
-                } else {
-                    "display:none".to_string()
-                }
-                on:click=move |_| close()
-            ></div>
-
-            <div
-                class="c-datepicker__panel"
-                role="dialog"
-                aria-modal="false"
-                aria-label="选择日期"
-                tabindex="-1"
-                node_ref=panel_ref
-                style=move || if open.get() {
-                    let (l, t) = pos.get();
-                    format!("position:fixed;left:{l}px;top:{t}px;z-index:{}", layer_z())
-                } else {
-                    "display:none".to_string()
-                }
-            >
+            // 点外关闭不再用全屏遮罩：遮罩留在带 transform 的祖先里会被缩成
+            // 祖先那么大，点外面关不掉。改由下面的文档级 pointerdown 判定。
+            <Portal>
+                {move || view! {
+                    <div
+                        class="c-datepicker__panel"
+                        role="dialog"
+                        aria-modal="false"
+                        aria-label="选择日期"
+                        tabindex="-1"
+                        node_ref=panel_ref
+                        style=move || if open.get() {
+                            format!(
+                                "z-index:{};position:fixed;left:-10000px;top:0px;visibility:hidden",
+                                layer_z()
+                            )
+                        } else {
+                            "display:none".to_string()
+                        }
+                    >
                 <div class="c-datepicker__head">
                     <button
                         class="c-datepicker__nav"
@@ -509,7 +589,9 @@ pub fn DatePicker(
                         </button>
                     </div>
                 })}
-            </div>
+                    </div>
+                }}
+            </Portal>
         </div>
     }
 }

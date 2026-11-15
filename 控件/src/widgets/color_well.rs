@@ -1,17 +1,24 @@
+use std::rc::Rc;
+
 use leptos::html;
+use leptos::portal::Portal;
 use leptos::prelude::*;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 
-use crate::base::overlay::{OverlayHost, OverlayId, OverlayKind};
+use crate::base::anchor::{self, AnchorSpec, AnchorWatch};
+use crate::base::overlay::{
+    listen_document, GlobalListener, OverlayHost, OverlayId, OverlayKind,
+};
 use crate::widgets::color_picker::{hex_to_rgb, normalize_hex, ColorPicker, SwatchItem};
 
 /* ==========================================================================
    颜色井 ColorWell
 
-   井是控件，面板是浮层：面板走 `OverlayHost`（z 与 Esc 的唯一权威）+ 自己
-   算 `position:fixed` 的落点（照抄 Select/DatePicker 的做法，避开卡片的
-   `overflow` 裁剪）。非模态，所以不 `bind`，也不做焦点陷阱。
+   井是控件，面板是浮层：面板走 `OverlayHost`（z 与 Esc 的唯一权威）+ 共享定位层
+   `base::anchor`（贴锚点、越界翻转、视口夹取），并且 `Portal` 到 body —— 卡片的
+   `overflow` 裁剪与祖先的 `transform` / `backdrop-filter` 都影响不到它。
+   非模态，所以不 `bind`，也不做焦点陷阱。
    ========================================================================== */
 
 #[component]
@@ -33,7 +40,9 @@ pub fn ColorWell(
 
     let open = RwSignal::new(false);
     let layer = RwSignal::new(None::<OverlayId>);
-    let pos = RwSignal::new((0.0f64, 0.0f64));
+    // 跟随句柄与点外监听：关闭时一起置 None，Drop 自动解绑。
+    let watch = StoredValue::new_local(None::<AnchorWatch>);
+    let outside = StoredValue::new_local(None::<GlobalListener>);
     // 调用方不回写 value 时（半受控用法），井也要跟着面板动，否则面板里调色
     // 而井纹丝不动，看起来像没生效。有 value 时以 value 为准。
     let local = RwSignal::new(None::<String>);
@@ -64,20 +73,26 @@ pub fn ColorWell(
         move || well_label(&name, &current())
     };
     let title = move || well_label(&name, &current());
-    let dialog_label = if label.is_empty() {
+    let dialog_label = StoredValue::new_local(if label.is_empty() {
         "颜色取色器".to_string()
     } else {
         format!("{label}取色器")
-    };
+    });
+    // Portal 的 children 必须是 `Fn`：捕获的句柄必须 Copy，否则内层闭包每次
+    // 构造都会把捕获值 move 出去，整个组件视图就退化成 FnOnce。
+    let presets = StoredValue::new_local(presets);
+    let label_for_panel = StoredValue::new_local(label.clone());
 
-    // 关闭只有一条路：出栈 → 收起 → 回焦触发器。点外、Esc（host 回调）、
+    // 关闭只有一条路：收起 → 解绑 → 出栈 → 回焦触发器。点外、Esc（host 回调）、
     // 再点一次井都走这里。
     let close = move || {
+        open.set(false);
+        watch.set_value(None);
+        outside.set_value(None);
         if let Some(id) = layer.get_untracked() {
             host.remove(id);
             layer.set(None);
         }
-        open.set(false);
         if let Some(el) = trigger_ref.get() {
             let _ = el.focus();
         }
@@ -88,26 +103,10 @@ pub fn ColorWell(
         if disabled || layer.get_untracked().is_some() {
             return;
         }
-        if let Some(el) = trigger_ref.get() {
-            let r = el.get_bounding_client_rect();
-            pos.set((r.left(), r.bottom() + 6.0));
-        }
+        // 只负责「开」：面板 Portal 到 body 之后再由 effect 量高度定位。
         let id = host.push(OverlayKind::Popover, dismiss);
         layer.set(Some(id));
         open.set(true);
-        // 焦点移进面板：非模态不禁背景，但「打开后键盘直接落在面板里」
-        // 是浮层的常规预期；必须等一帧，此时面板还带着 display:none。
-        let target = panel_ref;
-        schedule(move || {
-            let Some(panel) = target.get() else { return };
-            if let Ok(Some(el)) = panel.query_selector(
-                "[tabindex='0'], button:not([disabled]), input:not([disabled])",
-            ) {
-                if let Ok(el) = el.dyn_into::<web_sys::HtmlElement>() {
-                    let _ = el.focus();
-                }
-            }
-        });
     };
 
     let toggle = move || {
@@ -126,6 +125,8 @@ pub fn ColorWell(
     };
 
     on_cleanup(move || {
+        watch.set_value(None);
+        outside.set_value(None);
         if let Some(id) = layer.get_untracked() {
             host.remove(id);
         }
@@ -137,6 +138,84 @@ pub fn ColorWell(
             .map(|id| host.z(id))
             .unwrap_or(OverlayKind::Popover.base_z())
     };
+
+    // 打开后定位：DOM 落定 → 量 → 摆 → 跟随。
+    // 等一帧是因为面板的 style 闭包（负责第一帧 `visibility:hidden;left:-10000px`）
+    // 在本 effect 之后才生效 —— 同帧先 apply 会被它整条覆盖回视口外。
+    Effect::new(move |_| {
+        let anchor_el = trigger_ref
+            .get()
+            .map(|b| b.unchecked_into::<web_sys::Element>());
+        let panel = panel_ref.get();
+        if !open.get() {
+            watch.set_value(None);
+            outside.set_value(None);
+            return;
+        }
+        let (Some(anchor_el), Some(panel)) = (anchor_el, panel) else {
+            // Portal 还没挂好：NodeRef 是响应式的，挂上后会再跑一遍。
+            return;
+        };
+
+        // 点外关闭要同时认**触发器和面板**两个子树：面板已 Portal 到 body，
+        // 不在组件 DOM 里，只查井会把「点面板内部」判成点外（SV 面板点不动）。
+        // 拖拽期间没有新的 pointerdown，所以这条监听不会把拖拽误判成点外。
+        if outside.with_value(|v| v.is_none()) {
+            let trigger_key = trigger_ref;
+            let panel_key = panel_ref;
+            if let Some(listener) = listen_document("pointerdown", move |ev| {
+                let Some(target) = ev
+                    .target()
+                    .and_then(|t| t.dyn_into::<web_sys::Element>().ok())
+                else {
+                    return;
+                };
+                let node: &web_sys::Node = target.unchecked_ref();
+                let inside_trigger = trigger_key
+                    .get()
+                    .map(|t| t.contains(Some(node)))
+                    .unwrap_or(false);
+                let inside_panel = panel_key
+                    .get()
+                    .map(|p| p.contains(Some(node)))
+                    .unwrap_or(false);
+                if !inside_trigger && !inside_panel {
+                    close();
+                }
+            }) {
+                outside.set_value(Some(listener));
+            }
+        }
+
+        schedule(move || {
+            if !open.get_untracked() {
+                return;
+            }
+            if !anchor_el.is_connected() || !panel.is_connected() {
+                return;
+            }
+            // 取色器内容固定 236，留出 240 的最小宽度；不滚动、不跟井同宽。
+            let spec = AnchorSpec {
+                min_width: 240.0,
+                scroll: false,
+                ..AnchorSpec::bubble()
+            };
+            anchor::place_and_apply(&anchor_el, &panel, spec);
+            // 焦点移进面板：非模态不禁背景，但「打开后键盘直接落在面板里」
+            // 是浮层的常规预期。必须等定位完成 —— 第一帧面板是 visibility:hidden，
+            // 直接 focus 会被浏览器忽略。
+            if let Ok(Some(el)) = panel.query_selector(
+                "[tabindex='0'], button:not([disabled]), input:not([disabled])",
+            ) {
+                if let Ok(el) = el.dyn_into::<web_sys::HtmlElement>() {
+                    let _ = el.focus();
+                }
+            }
+            // 锚点被滚出视口就收起：留一个挂在屏幕外的面板没有意义。
+            let on_gone: Rc<dyn Fn()> = Rc::new(move || close());
+            watch.set_value(Some(anchor::watch(anchor_el, panel.into(), spec, Some(on_gone))));
+        });
+    });
 
     view! {
         // 外层只是「井 + 标签 + 十六进制」的一行，用既有布局工具类，不新造样式
@@ -165,38 +244,37 @@ pub fn ColorWell(
                 <span class="c-colorpicker__hextext selectable">{move || current()}</span>
             })}
 
-            // 点外关闭：铺一层透明的全屏垫子，压在井上但托着面板
-            <div
-                style=move || if open.get() {
-                    format!("position:fixed;inset:0;z-index:{}", layer_z() - 1)
-                } else {
-                    "display:none".to_string()
-                }
-                on:click=move |_| close()
-            ></div>
-
-            <div
-                role="dialog"
-                aria-modal="false"
-                aria-label=dialog_label
-                tabindex="-1"
-                node_ref=panel_ref
-                style=move || if open.get() {
-                    let (l, t) = pos.get();
-                    format!("position:fixed;left:{l}px;top:{t}px;z-index:{}", layer_z())
-                } else {
-                    "display:none".to_string()
-                }
-            >
-                <ColorPicker
-                    value=Signal::derive(move || {
-                        value.get().or_else(|| local.get()).unwrap_or_default()
-                    })
-                    presets=presets
-                    label=label.clone()
-                    on_change=Callback::new(move |hex| pick(hex))
-                />
-            </div>
+            // 点外关闭不再用全屏垫子：垫子留在带 transform 的祖先里会被缩成
+            // 祖先那么大，点外面关不掉。改由下面的文档级 pointerdown 判定。
+            <Portal>
+                {move || view! {
+                    <div
+                        class="c-colorwell__panel"
+                        role="dialog"
+                        aria-modal="false"
+                        aria-label=dialog_label.get_value()
+                        tabindex="-1"
+                        node_ref=panel_ref
+                        style=move || if open.get() {
+                            format!(
+                                "z-index:{};position:fixed;left:-10000px;top:0px;visibility:hidden",
+                                layer_z()
+                            )
+                        } else {
+                            "display:none".to_string()
+                        }
+                    >
+                        <ColorPicker
+                            value=Signal::derive(move || {
+                                value.get().or_else(|| local.get()).unwrap_or_default()
+                            })
+                            presets=presets.get_value()
+                            label=label_for_panel.get_value()
+                            on_change=Callback::new(move |hex| pick(hex))
+                        />
+                    </div>
+                }}
+            </Portal>
         </div>
     }
 }

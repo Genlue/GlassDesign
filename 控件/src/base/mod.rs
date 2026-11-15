@@ -1,3 +1,4 @@
+pub mod anchor;
 pub mod icon;
 pub mod id;
 pub mod install;

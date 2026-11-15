@@ -77,7 +77,7 @@ pub fn FormPage() -> impl IntoView {
             <div class="l-stack l-stack--6">
                 <div class="l-stack l-stack--2">
                     <h1 class="c-headline">"表单"</h1>
-                    <p class="c-subtitle">"受控值、校验态、选择与分段；每个控件的唯一真相都在调用方。"</p>
+                    <p class="c-subtitle" style="white-space:normal">"受控值、校验态、选择与分段；每个控件的唯一真相都在调用方。"</p>
                 </div>
 
                 <div class="l-stack l-stack--3">

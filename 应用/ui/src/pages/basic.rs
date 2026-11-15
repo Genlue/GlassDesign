@@ -12,7 +12,7 @@ pub fn BasicPage() -> impl IntoView {
             <div class="l-stack l-stack--6">
                 <div class="l-stack l-stack--2">
                     <h1 class="c-headline">"基础控件"</h1>
-                    <p class="c-subtitle">"按钮、状态、进度、折叠。全部由 Rust 组件拼装。"</p>
+                    <p class="c-subtitle" style="white-space:normal">"按钮、状态、进度、折叠。全部由 Rust 组件拼装。"</p>
                 </div>
 
                 <div class="l-stack l-stack--3">

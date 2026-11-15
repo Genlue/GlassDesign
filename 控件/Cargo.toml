@@ -1,6 +1,6 @@
 [package]
 name = "glass-design"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 description = "GlassDesign：Tauri 2 + Leptos 的桌面控件库"
 license = "MIT"

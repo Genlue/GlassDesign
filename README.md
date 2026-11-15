@@ -4,7 +4,7 @@ Tauri 2 + Rust 的桌面界面库。
 
 库里只有一个可复制单元：`控件/`。整个文件夹拷进别的项目，加一行 path 依赖，调一次 `install()`，就能用 `view!` 拼界面；升级时用新文件夹覆盖旧文件夹。
 
-> **状态：P3 已收口**（2026-11-15）。
+> **状态：P4 进行中 · 浮层几何已统一**（2026-11-15）。
 > 88 个 Rust 组件、八个画廊分区、Tauri 2 宿主；玻璃材质为**构建期预计算贴图 + 静态 SVG filter**，运行时没有 JavaScript、canvas 或 WebGL。
 
 ---
@@ -14,7 +14,7 @@ Tauri 2 + Rust 的桌面界面库。
 | 仓库 | 是什么 | 状态 |
 |---|---|---|
 | `Golden Gate HTML Design` | 原库：Electron + 原生 HTML/CSS/ES Module，84 个命令式工厂 | **冻结为参照**，不再演进 |
-| `GlassDesign` | 新库：Tauri 2 + Rust + Leptos，声明式组件 + 静态 SVG 材质 | **P3 · 88 组件** |
+| `GlassDesign` | 新库：Tauri 2 + Rust + Leptos，声明式组件 + 静态 SVG 材质 | **P4 · 88 组件** |
 
 旧库不是“上一版”，是**视觉与行为的对照标本**：10,204 行 CSS、8 套玻璃参数、766 条断言都留在旧仓库，新库逐批对照移植。
 
@@ -122,6 +122,8 @@ P3 已完成：把旧库剩下的 37 个组件全部迁完（数值/日期/令�
 `Menu` / `Popover` / `Tooltip` / `Sheet` / `Drawer`、`Inspector` / `SplitView` / `StatusBar`、`NavDock` / `DocumentTabs` /
 `NavSearch` / `ToolbarOverflow` / `ToolbarCustomization` / `Form`），并把浮层统一到 `OverlayHost`。
 
-P4 候选都是**能力上限**，不是漏项：虚拟化公共层、统一 Portal、`DataTable` 行内编辑与受控选择、日期区间、i18n、退出动画。
+P4 已完成第一项：**浮层几何统一** —— 所有锚定面板 `Portal` 到 body、按视口坐标定位，翻上/夹取/跟随滚动都收敛到 `控件/src/base/anchor.rs`，包含块（`transform`/`backdrop-filter`）问题根治。
+
+P4 剩余都是**能力上限**：虚拟化公共层、同 rank 单开仲裁、`DataTable` 行内编辑与受控选择、日期区间、i18n、退出动画。
 
 完整清单与简化边界见 [`docs/03-实现清单.md`](docs/03-实现清单.md)。

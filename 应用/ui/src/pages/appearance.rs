@@ -23,7 +23,7 @@ pub fn AppearancePage() -> impl IntoView {
             <div class="l-stack l-stack--6">
                 <div class="l-stack l-stack--2">
                     <h1 class="c-headline">"外观"</h1>
-                    <p class="c-subtitle">
+                    <p class="c-subtitle" style="white-space:normal">
                         "颜色井、取色器、文件选择与拖放：值都在调用方手里，控件只上报。"
                     </p>
                 </div>

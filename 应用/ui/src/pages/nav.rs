@@ -56,7 +56,7 @@ pub fn NavPage() -> impl IntoView {
 
                 <div class="l-stack l-stack--2">
                     <h1 class="c-headline">"导航"</h1>
-                    <p class="c-subtitle">"页签、面包屑、分页；键盘方向键切换。"</p>
+                    <p class="c-subtitle" style="white-space:normal">"页签、面包屑、分页；键盘方向键切换。"</p>
                 </div>
 
                 <div class="l-stack l-stack--3">

@@ -168,7 +168,7 @@ pub fn DataPage() -> impl IntoView {
 
                 <div class="l-stack l-stack--2">
                     <h1 class="c-headline">"数据"</h1>
-                    <p class="c-subtitle">"列表、表格、分页。选择与排序状态由调用方持有。"</p>
+                    <p class="c-subtitle" style="white-space:normal">"列表、表格、分页。选择与排序状态由调用方持有。"</p>
                 </div>
 
                 <div class="l-stack l-stack--3">

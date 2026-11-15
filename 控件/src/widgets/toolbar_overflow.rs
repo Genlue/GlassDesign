@@ -16,11 +16,11 @@
 //!
 //! 溢出菜单**不另写弹层**：直接复用 `Menu`（`fixed_size = false`），
 //! Esc / z-index / 点外关闭 / 焦点归还全归 `OverlayHost` 与 `Menu` 管。
+//! 挂 body 也由 `Menu` 自带 Portal 完成 —— 这里不要在外面再套一层。
 
 use std::rc::Rc;
 
 use leptos::html;
-use leptos::portal::Portal;
 use leptos::prelude::*;
 use leptos::reactive::owner::LocalStorage;
 use wasm_bindgen::closure::Closure;
@@ -270,8 +270,8 @@ pub fn ToolbarOverflow(
 
     let menu_actions = actions.clone();
     // 菜单项的派生值：隐藏集合一变就重算。
-    // 用 `Memo`（Copy）而不是闭包，是因为 Portal 的 children 必须是 `Fn`，
-    // 直接把 Vec 捕获进渲染闭包就只能调用一次。
+    // 用 `Memo`（Copy）而不是闭包，是因为下面那段响应式闭包必须是 `Fn`
+    // （隐藏集合变化时会再调一次），捕获的 Vec 不能从闭包里被 move 出去。
     let menu_items_memo = Memo::new(move |_| {
         let hid = hidden.get();
         menu_items(&menu_actions, &hid)
@@ -326,44 +326,33 @@ pub fn ToolbarOverflow(
         // 菜单项跟着「隐藏集合」变，所以整块放进响应式闭包里重建。
         // 只在隐藏集合变化时重建，而那时菜单已经关掉，不存在「打开中被换掉」。
         //
-        // 必须走 `Portal`：本组件几乎总是放在 `.c-toolbar` 里，而它的
-        // `backdrop-filter` 会给 `position:fixed` 造一个包含块 —— 菜单会按工具栏
-        // 的坐标摆、还会跟着页面滚，甚至为露出菜单项把整页滚走。
-        // 挂到 body 之后，fixed 才真的是视口坐标。
-        // 菜单项跟着「隐藏集合」变，所以整块放进响应式闭包里重建。
-        // 只在隐藏集合变化时重建，而那时菜单已经关掉，不存在「打开中被换掉」。
-        //
-        // 必须走 `Portal`：本组件几乎总是放在 `.c-toolbar` 里，而它的
-        // `backdrop-filter` 会给 `position:fixed` 造一个包含块 —— 菜单会按工具栏
-        // 的坐标摆、还会跟着页面滚，甚至为露出菜单项把整页滚走。
-        // 挂到 body 之后，fixed 才真的是视口坐标。
-        <Portal>
-            {move || {
-                let items = menu_items_memo.get();
-                view! {
-                    <Menu
-                        open=Signal::derive(move || open.get())
-                        anchor=anchor
-                        items=items
-                        label="更多操作"
-                        on_select=Callback::new(move |id: String| {
-                            if let Some(cb) = on_action {
-                                cb.run(id);
-                            }
-                        })
-                        on_close=Callback::new(move |_| open.set(false))
-                    />
-                }
-            }}
-        </Portal>
+        // 不用在这里套 `Portal`：`Menu` 自带 Portal（面板挂到 body）。
+        // 本组件几乎总是放在 `.c-toolbar` 里，而它的 `backdrop-filter` 会给
+        // `position:fixed` 造一个包含块 —— 只有挂到 body，fixed 才真的是视口坐标。
+        {move || {
+            let items = menu_items_memo.get();
+            view! {
+                <Menu
+                    open=Signal::derive(move || open.get())
+                    anchor=anchor
+                    items=items
+                    label="更多操作"
+                    on_select=Callback::new(move |id: String| {
+                        if let Some(cb) = on_action {
+                            cb.run(id);
+                        }
+                    })
+                    on_close=Callback::new(move |_| open.set(false))
+                />
+            }
+        }}
     }
 }
 
 /* ---------------- 测量与排布 ---------------- */
 
 /// 溢出菜单项：只包含当前被收起的动作，顺序沿用工具栏里的原始顺序。
-/// 做成自由函数而不是闭包：`Portal` 的 children 必须是 `Fn`，
-/// 闭包一旦把捕获的 Vec move 进去就只能调一次。
+/// 做成自由函数而不是闭包：闭包一旦把捕获的 Vec move 进去就只能调一次。
 fn menu_items(actions: &[ToolbarAction], hidden: &[String]) -> Vec<MenuItem> {
     actions
         .iter()
