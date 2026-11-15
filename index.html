@@ -12,7 +12,7 @@
 </style>
 <style id="gd-styles">/* 由 scripts/build-css.mjs 生成，请勿手改。
    源：控件/css/src/{tokens,optics,base,layout,components}.css
-   顺序是契约：tokens → optics → base → layout → components(01-62)。 */
+   顺序是契约：tokens → optics → base → layout → components（64 个分区）。 */
 
 /* ===== tokens.css ===== */
 /* ==========================================================================
@@ -896,7 +896,7 @@ img {
      在主线程上跑布局，重页面掉到 12fps 时两者进度对不上，中间就会裂。 */
   --nav-dur: 380ms;
   /* 非线性但分布均匀：0.32/0.72 那种强 ease-out 在 15% 时间就走完 80%，
-     210px 的侧栏看起���是「啪」一下没了。这条在 25/50/75% 分别走
+     210px 的��栏看起来是「啪」一下没了。这条在 25/50/75% 分别走
      约 30/66/91%，整个时长里都看得见动作，末段再软着陆。 */
   --nav-ease: cubic-bezier(0.4, 0, 0.2, 1);
   /* 单栏是默认态：没有导航栏时，主区拿满整个窗口 */
@@ -5316,7 +5316,7 @@ html[data-focused="0"] .c-nav__item[aria-selected="true"] .c-nav__icon {
   margin: 0 3px;
 }
 
-/* 脚注：药丸外面的独立圆钮（比如「重做」），和���丸不是一体的 */
+/* 脚注：药丸外面的独立圆钮（比如「重做��），和药丸不是一体的 */
 .c-dock__foot {
   display: flex;
   align-items: center;
@@ -7861,7 +7861,7 @@ html[data-resizing] {
   overflow: visible;
 }
 
-/* ���用 .c-field 的观感，只把尺寸收到行内 */
+/* 复用 .c-field 的观感，只把尺寸收到行内 */
 .c-datatable__editor {
   --ctl-h: calc(var(--dt-row-h) - 4px);
   --ctl-fs: var(--fs-12);
