@@ -1,5 +1,5 @@
 // 把 控件/css/src 的 @import 展开成单文件 控件/css/glass.css。
-// 顺序是契约：tokens → optics → base → layout → components(01-62)。
+// 顺序是契约：tokens → optics → base → layout → components（64 个分区，按文件名排序）。
 import { readFileSync, writeFileSync, statSync } from 'node:fs';
 import { dirname, resolve, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -24,7 +24,7 @@ const parts = ['tokens.css', 'optics.css', 'base.css', 'layout.css', 'components
 
 const out = `/* 由 scripts/build-css.mjs 生成，请勿手改。
    源：控件/css/src/{tokens,optics,base,layout,components}.css
-   顺序是契约：tokens → optics → base → layout → components(01-62)。 */
+   顺序是契约：tokens → optics → base → layout → components（64 个分区）。 */
 ${parts.join('\n')}
 `;
 
