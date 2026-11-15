@@ -53,7 +53,13 @@ pub fn NavItem(
     #[prop(optional)] disabled: bool,
     #[prop(optional)] on_click: Option<Callback<()>>,
 ) -> impl IntoView {
-    let aria_selected = move || if selected.get().unwrap_or(false) { "true" } else { "false" };
+    let aria_selected = move || {
+        if selected.get().unwrap_or(false) {
+            "true"
+        } else {
+            "false"
+        }
+    };
     let title = label.clone();
 
     view! {

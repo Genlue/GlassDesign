@@ -12,7 +12,11 @@ pub struct SelectOption {
 
 impl SelectOption {
     pub fn new(value: impl Into<String>, label: impl Into<String>) -> Self {
-        Self { value: value.into(), label: label.into(), disabled: false }
+        Self {
+            value: value.into(),
+            label: label.into(),
+            disabled: false,
+        }
     }
 }
 
@@ -32,7 +36,11 @@ pub fn Select(
     let options_for_label = options.clone();
     let current_label = move || {
         let v = value.get().unwrap_or_default();
-        options_for_label.iter().find(|o| o.value == v).map(|o| o.label.clone()).unwrap_or_default()
+        options_for_label
+            .iter()
+            .find(|o| o.value == v)
+            .map(|o| o.label.clone())
+            .unwrap_or_default()
     };
     let has_value = move || !value.get().unwrap_or_default().is_empty();
 

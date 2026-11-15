@@ -26,6 +26,17 @@ pub fn NavPage() -> impl IntoView {
                 </div>
 
                 <div class="l-stack l-stack--3">
+                    <SectionTitle>"信息卡"</SectionTitle>
+                    <Card>
+                        <div class="l-pad l-stack l-stack--3">
+                            <NavInfo icon=IconName::SETTINGS title="参数" subtitle="应用设置" />
+                            <NavInfo title="小 Q" subtitle="本地账户" on_click=Callback::new(move |_| { toast("打开账户"); }) />
+                            <NavCard solid=true icon=IconName::LAYERS title="组件清单" desc="51 个组件，五个分区" />
+                        </div>
+                    </Card>
+                </div>
+
+                <div class="l-stack l-stack--3">
                     <SectionTitle>"页签"</SectionTitle>
                     <Card>
                         <div class="l-pad l-stack l-stack--4">

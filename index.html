@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!-- P1 静态视觉快照：由应用/ui 的 DOM 导出，不含 WASM 交互。
      重新生成：node scripts/build-static.mjs -->
-<html lang="zh-CN" data-theme="light" data-gd-version="0.1.0" data-theme-mode="system" style="--lg: 1; --shadow-k: 1; --ic-stroke: 1.4; --accent: rgb(9 119 230); --accent-hover: rgb(8 103 199); --accent-soft: rgb(10 132 255 / 0.12); --accent-ring: rgb(10 132 255 / 0.36); --accent-rgb: 10 132 255; --text-on-accent: #ffffff;"><head>
+<html lang="zh-CN" data-theme="light" data-gd-version="0.2.0" data-theme-mode="system" style="--lg: 1; --shadow-k: 1; --ic-stroke: 1.4; --accent: rgb(9 119 230); --accent-hover: rgb(8 103 199); --accent-soft: rgb(10 132 255 / 0.12); --accent-ring: rgb(10 132 255 / 0.36); --accent-rgb: 10 132 255; --text-on-accent: #ffffff;"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:,">
@@ -896,7 +896,7 @@ img {
      在主线程上跑布局，重页面掉到 12fps 时两者进度对不上，中间就会裂。 */
   --nav-dur: 380ms;
   /* 非线性但分布均匀：0.32/0.72 那种强 ease-out 在 15% 时间就走完 80%，
-     210px 的侧栏看起���是「啪」一下没了。这条在 25/50/75% 分别走
+     210px 的侧栏看起来是「啪」一下没了。这条在 25/50/75% 分别走
      约 30/66/91%，整个时长里都看得见动作，末段再软着陆。 */
   --nav-ease: cubic-bezier(0.4, 0, 0.2, 1);
   /* 单栏是默认态：没有导航栏时，主区拿满整个窗口 */
@@ -5187,7 +5187,7 @@ html[data-focused="0"] .c-nav__item[aria-selected="true"] .c-nav__icon {
   gap: var(--dock-gap);
   padding: var(--dock-pad);
   border-radius: var(--r-pill);
-  /* 长条玻璃的四层光学，和胶囊同源，但顶部聚光按固定高度收在圆头里 ——
+  /* 长条玻璃的四层光学，和胶囊同源，但顶部聚光按固定高��收在圆头里 ——
      胶囊那条 130% 的径向渐变铺到 400px 高的药丸上会拉成一片白雾。 */
   /* 用长写，不用 background 简写：简写里把 color-mix() 放在最后一层，
      Chrome 会整条判无效（.c-capsule 那条就是这么静默失效的）。 */
@@ -5316,7 +5316,7 @@ html[data-focused="0"] .c-nav__item[aria-selected="true"] .c-nav__icon {
   margin: 0 3px;
 }
 
-/* 脚注：药丸外面的独立圆钮（比如「重做」），和���丸不是一体的 */
+/* 脚注：药丸外面的独立圆钮（比如「重做」），和药丸不是一体的 */
 .c-dock__foot {
   display: flex;
   align-items: center;
@@ -7861,7 +7861,7 @@ html[data-resizing] {
   overflow: visible;
 }
 
-/* ���用 .c-field 的观感，只把尺寸收到行内 */
+/* 复用 .c-field 的观感，只把尺寸收到行内 */
 .c-datatable__editor {
   --ctl-h: calc(var(--dt-row-h) - 4px);
   --ctl-fs: var(--fs-12);

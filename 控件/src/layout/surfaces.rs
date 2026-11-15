@@ -2,10 +2,7 @@ use leptos::prelude::*;
 
 /// 一块卡片表面。只负责结构，不写样式。
 #[component]
-pub fn Card(
-    children: Children,
-    #[prop(into, optional)] class: String,
-) -> impl IntoView {
+pub fn Card(children: Children, #[prop(into, optional)] class: String) -> impl IntoView {
     let cls = if class.is_empty() {
         "c-card".to_string()
     } else {

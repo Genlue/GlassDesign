@@ -13,10 +13,21 @@ pub struct TabItem {
 
 impl TabItem {
     pub fn new(value: impl Into<String>, label: impl Into<String>) -> Self {
-        Self { value: value.into(), label: label.into(), icon: None, disabled: false }
+        Self {
+            value: value.into(),
+            label: label.into(),
+            icon: None,
+            disabled: false,
+        }
     }
-    pub fn icon(mut self, icon: IconName) -> Self { self.icon = Some(icon); self }
-    pub fn disabled(mut self) -> Self { self.disabled = true; self }
+    pub fn icon(mut self, icon: IconName) -> Self {
+        self.icon = Some(icon);
+        self
+    }
+    pub fn disabled(mut self) -> Self {
+        self.disabled = true;
+        self
+    }
 }
 
 #[component]
@@ -30,7 +41,11 @@ pub fn Tabs(
 ) -> impl IntoView {
     let refs: Vec<NodeRef<html::Div>> = (0..tabs.len()).map(|_| NodeRef::new()).collect();
     let all = tabs.clone();
-    let label = if label.is_empty() { "页签".to_string() } else { label };
+    let label = if label.is_empty() {
+        "页签".to_string()
+    } else {
+        label
+    };
 
     let items = tabs.into_iter().enumerate().map(|(i, tab)| {
         let state = tab.value.clone();

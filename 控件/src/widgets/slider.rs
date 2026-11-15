@@ -27,18 +27,26 @@ pub fn Slider(
     let emit = move |next: f64| {
         let q = quantize(next);
         if (q - raw()).abs() > f64::EPSILON {
-            if let Some(cb) = on_input { cb.run(q); }
+            if let Some(cb) = on_input {
+                cb.run(q);
+            }
         }
     };
     let commit = move |next: f64| {
         let q = quantize(next);
-        if let Some(cb) = on_input { cb.run(q); }
-        if let Some(cb) = on_change { cb.run(q); }
+        if let Some(cb) = on_input {
+            cb.run(q);
+        }
+        if let Some(cb) = on_change {
+            cb.run(q);
+        }
     };
     let from_x = move |x: f64| {
         let Some(el) = track_ref.get() else { return };
         let r = el.get_bounding_client_rect();
-        if r.width() <= 0.0 { return; }
+        if r.width() <= 0.0 {
+            return;
+        }
         let p = ((x - r.left()) / r.width()).clamp(0.0, 1.0);
         emit(min + p * (max - min));
     };

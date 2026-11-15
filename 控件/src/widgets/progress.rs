@@ -24,7 +24,11 @@ pub fn ProgressRing(
     #[prop(into, optional)] label: String,
 ) -> impl IntoView {
     let now = move || clamp01(value.get().unwrap_or(0.0));
-    let cls = if size == RingSize::Lg { "c-ring c-ring--lg" } else { "c-ring" };
+    let cls = if size == RingSize::Lg {
+        "c-ring c-ring--lg"
+    } else {
+        "c-ring"
+    };
     let style = move || format!("--v:{}", now() / 100.0);
 
     view! {
@@ -78,7 +82,11 @@ pub fn Progress(
 
 #[component]
 pub fn Spinner(#[prop(into, optional)] label: String) -> impl IntoView {
-    let label = if label.is_empty() { "加载中".to_string() } else { label };
+    let label = if label.is_empty() {
+        "加载中".to_string()
+    } else {
+        label
+    };
     view! { <span class="c-spinner" role="status" aria-label=label></span> }
 }
 
@@ -90,8 +98,16 @@ pub fn Skeleton(
     #[prop(optional)] circle: bool,
     #[prop(into, optional)] class: String,
 ) -> impl IntoView {
-    let width = if width.is_empty() { "100%".to_string() } else { width };
-    let height = if height.is_empty() { "12px".to_string() } else { height };
+    let width = if width.is_empty() {
+        "100%".to_string()
+    } else {
+        width
+    };
+    let height = if height.is_empty() {
+        "12px".to_string()
+    } else {
+        height
+    };
     let mut base = String::from("c-skeleton");
     if circle {
         base.push_str(" c-skeleton--circle");

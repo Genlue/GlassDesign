@@ -102,7 +102,11 @@ fn hex_rgb(hex: &str) -> (u8, u8, u8) {
         h.to_string()
     };
     let n = u32::from_str_radix(&full, 16).unwrap_or(0x0a84ff);
-    (((n >> 16) & 255) as u8, ((n >> 8) & 255) as u8, (n & 255) as u8)
+    (
+        ((n >> 16) & 255) as u8,
+        ((n >> 8) & 255) as u8,
+        (n & 255) as u8,
+    )
 }
 
 fn mix((r, g, b): (u8, u8, u8), (r2, g2, b2): (u8, u8, u8), t: f32) -> (u8, u8, u8) {
@@ -145,11 +149,21 @@ fn apply_accent(style: &web_sys::CssStyleDeclaration, hex: &str, resolved: &str)
 
     let _ = style.set_property("--accent", &rgb(adjusted));
     let _ = style.set_property("--accent-hover", &rgb(hover));
-    let _ = style.set_property("--accent-soft", &rgba(base, if resolved == "dark" { 0.22 } else { 0.12 }));
-    let _ = style.set_property("--accent-ring", &rgba(base, if resolved == "dark" { 0.48 } else { 0.36 }));
+    let _ = style.set_property(
+        "--accent-soft",
+        &rgba(base, if resolved == "dark" { 0.22 } else { 0.12 }),
+    );
+    let _ = style.set_property(
+        "--accent-ring",
+        &rgba(base, if resolved == "dark" { 0.48 } else { 0.36 }),
+    );
     let _ = style.set_property("--accent-rgb", &format!("{} {} {}", base.0, base.1, base.2));
     let _ = style.set_property(
         "--text-on-accent",
-        if luminance(base) > 0.62 { "#1d1d1f" } else { "#ffffff" },
+        if luminance(base) > 0.62 {
+            "#1d1d1f"
+        } else {
+            "#ffffff"
+        },
     );
 }

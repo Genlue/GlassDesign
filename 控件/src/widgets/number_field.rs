@@ -22,7 +22,9 @@ pub fn NumberField(
     let commit = move |next: f64| {
         let q = (min + ((next - min) / step).round() * step).clamp(min, max);
         if (q - current()).abs() > f64::EPSILON {
-            if let Some(cb) = on_change { cb.run((q * 1_000_000.0).round() / 1_000_000.0); }
+            if let Some(cb) = on_change {
+                cb.run((q * 1_000_000.0).round() / 1_000_000.0);
+            }
         }
     };
     let parse_commit = move |text: &str| {

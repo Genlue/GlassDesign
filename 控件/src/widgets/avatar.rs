@@ -39,7 +39,7 @@ impl AvatarStatus {
     }
 }
 
-fn initials(name: &str) -> String {
+pub(crate) fn initials(name: &str) -> String {
     let trimmed = name.trim();
     if trimmed.is_empty() {
         return String::new();

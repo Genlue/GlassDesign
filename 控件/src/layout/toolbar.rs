@@ -53,10 +53,7 @@ pub enum CapsuleSize {
 
 /// 一组控件共用的玻璃胶囊。
 #[component]
-pub fn Capsule(
-    children: Children,
-    #[prop(optional)] size: CapsuleSize,
-) -> impl IntoView {
+pub fn Capsule(children: Children, #[prop(optional)] size: CapsuleSize) -> impl IntoView {
     let (cls, width) = match size {
         CapsuleSize::Auto => ("c-capsule", None),
         CapsuleSize::Sm => ("c-capsule", Some("112")),

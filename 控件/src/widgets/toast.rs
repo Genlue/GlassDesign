@@ -52,7 +52,9 @@ pub fn toast_with(message: impl Into<String>, tone: Tone, icon: Option<IconName>
 }
 
 fn schedule_remove(signal: RwSignal<Vec<ToastItem>>, id: u32) {
-    let Some(window) = web_sys::window() else { return };
+    let Some(window) = web_sys::window() else {
+        return;
+    };
     let cb = wasm_bindgen::closure::Closure::once_into_js(move || {
         signal.update(|list| list.retain(|t| t.id != id));
     });
@@ -83,4 +85,3 @@ pub fn ToastHost() -> impl IntoView {
         </div>
     }
 }
-

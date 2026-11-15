@@ -12,7 +12,11 @@ pub fn FormField(
 ) -> impl IntoView {
     let err = move || error.get().unwrap_or_default();
     let has_error = move || !err().is_empty();
-    let cls = if inline { "c-formfield c-formfield--inline" } else { "c-formfield" };
+    let cls = if inline {
+        "c-formfield c-formfield--inline"
+    } else {
+        "c-formfield"
+    };
 
     view! {
         <div class=cls data-invalid=move || has_error().then_some("1")

@@ -23,7 +23,13 @@ pub fn Chip(
         cls.push_str(" c-chip--interactive");
     }
 
-    let pressed = move || if selected.get().unwrap_or(false) { "true" } else { "false" };
+    let pressed = move || {
+        if selected.get().unwrap_or(false) {
+            "true"
+        } else {
+            "false"
+        }
+    };
     let label_for_remove = label.clone();
 
     view! {

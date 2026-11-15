@@ -41,8 +41,16 @@ pub fn InlineMessage(
 ) -> impl IntoView {
     let has_title = !title.is_empty();
     let has_desc = !description.is_empty();
-    let role = if tone == Tone::Danger { "alert" } else { "status" };
-    let live = if tone == Tone::Danger { None } else { Some("polite") };
+    let role = if tone == Tone::Danger {
+        "alert"
+    } else {
+        "status"
+    };
+    let live = if tone == Tone::Danger {
+        None
+    } else {
+        Some("polite")
+    };
 
     view! {
         <div class=format!("c-inline {}", tone.class()) role=role aria-live=live>

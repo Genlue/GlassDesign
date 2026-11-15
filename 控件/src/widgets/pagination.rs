@@ -39,24 +39,35 @@ pub fn Pagination(
     let go = move |p: u32| {
         let p = p.clamp(1, total);
         if p != current() {
-            if let Some(cb) = on_change { cb.run(p); }
+            if let Some(cb) = on_change {
+                cb.run(p);
+            }
         }
     };
 
-    let pages = move || window_pages(current(), total).into_iter().map(|p| {
-        match p {
-            Some(n) => view! {
-                <button class="c-pagination__btn c-pagination__page" type="button"
-                    data-page=n
-                    aria-label=format!("第 {n} 页")
-                    aria-current=(n == current()).then_some("page")
-                    on:click=move |_| go(n)>{n}</button>
-            }.into_any(),
-            None => view! { <span class="c-pagination__gap" aria-hidden="true">"…"</span> }.into_any(),
-        }
-    }).collect::<Vec<_>>();
+    let pages = move || {
+        window_pages(current(), total)
+            .into_iter()
+            .map(|p| match p {
+                Some(n) => view! {
+                    <button class="c-pagination__btn c-pagination__page" type="button"
+                        data-page=n
+                        aria-label=format!("第 {n} 页")
+                        aria-current=(n == current()).then_some("page")
+                        on:click=move |_| go(n)>{n}</button>
+                }
+                .into_any(),
+                None => view! { <span class="c-pagination__gap" aria-hidden="true">"…"</span> }
+                    .into_any(),
+            })
+            .collect::<Vec<_>>()
+    };
 
-    let label = if label.is_empty() { "分页".to_string() } else { label };
+    let label = if label.is_empty() {
+        "分页".to_string()
+    } else {
+        label
+    };
     view! {
         <nav class="c-pagination" role="navigation" aria-label=label>
             <div class="c-pagination__pager" role="group" aria-label="页码">

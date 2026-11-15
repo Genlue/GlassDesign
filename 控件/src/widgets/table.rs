@@ -66,7 +66,11 @@ pub fn Table(
     #[prop(optional)] on_select: Option<Callback<String>>,
     #[prop(optional)] dense: bool,
 ) -> impl IntoView {
-    let cls = if dense { "c-table c-table--dense" } else { "c-table" };
+    let cls = if dense {
+        "c-table c-table--dense"
+    } else {
+        "c-table"
+    };
     let selected = selected_key;
 
     let head = columns.iter().map(|col| {
@@ -109,28 +113,31 @@ pub fn Table(
         }
     }).collect::<Vec<_>>();
 
-    let body = rows.iter().map(|row| {
-        let key = row.key.clone();
-        let is_selected = selected.get().as_deref() == Some(row.key.as_str());
-        let cells = row.cells.clone();
-        let on_select = on_select;
-        let key_for_click = key.clone();
-        view! {
-            <tr
-                aria-selected=(on_select.is_some()).then(|| is_selected.to_string())
-                on:click=move |_| {
-                    if let Some(cb) = on_select { cb.run(key_for_click.clone()); }
-                }
-            >
-                {cells.into_iter().enumerate().map(|(i, text)| {
-                    let right = columns.get(i).map(|c| c.align_right).unwrap_or(false);
-                    view! {
-                        <td class=right.then_some("c-table__num")>{text}</td>
+    let body = rows
+        .iter()
+        .map(|row| {
+            let key = row.key.clone();
+            let is_selected = selected.get().as_deref() == Some(row.key.as_str());
+            let cells = row.cells.clone();
+            let on_select = on_select;
+            let key_for_click = key.clone();
+            view! {
+                <tr
+                    aria-selected=(on_select.is_some()).then(|| is_selected.to_string())
+                    on:click=move |_| {
+                        if let Some(cb) = on_select { cb.run(key_for_click.clone()); }
                     }
-                }).collect::<Vec<_>>()}
-            </tr>
-        }
-    }).collect::<Vec<_>>();
+                >
+                    {cells.into_iter().enumerate().map(|(i, text)| {
+                        let right = columns.get(i).map(|c| c.align_right).unwrap_or(false);
+                        view! {
+                            <td class=right.then_some("c-table__num")>{text}</td>
+                        }
+                    }).collect::<Vec<_>>()}
+                </tr>
+            }
+        })
+        .collect::<Vec<_>>();
 
     view! {
         <table class=cls>

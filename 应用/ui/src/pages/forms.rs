@@ -17,7 +17,11 @@ pub fn FormPage() -> impl IntoView {
     let show_dialog = RwSignal::new(false);
 
     let name_error = Signal::derive(move || {
-        if name.get().trim().is_empty() { "名称不能为空".to_string() } else { String::new() }
+        if name.get().trim().is_empty() {
+            "名称不能为空".to_string()
+        } else {
+            String::new()
+        }
     });
 
     let radios = vec![

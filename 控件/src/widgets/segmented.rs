@@ -43,7 +43,11 @@ pub fn Segmented(
     #[prop(optional)] on_change: Option<Callback<String>>,
     #[prop(optional)] size: SegmentedSize,
 ) -> impl IntoView {
-    let cls = if size == SegmentedSize::Lg { "c-seg c-seg--lg" } else { "c-seg" };
+    let cls = if size == SegmentedSize::Lg {
+        "c-seg c-seg--lg"
+    } else {
+        "c-seg"
+    };
     let options_for_click = options.clone();
 
     let buttons = options.into_iter().map(|opt| {

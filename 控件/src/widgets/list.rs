@@ -24,10 +24,22 @@ impl ListItem {
             chevron: false,
         }
     }
-    pub fn subtitle(mut self, v: impl Into<String>) -> Self { self.subtitle = v.into(); self }
-    pub fn meta(mut self, v: impl Into<String>) -> Self { self.meta = v.into(); self }
-    pub fn icon(mut self, v: IconName) -> Self { self.icon = Some(v); self }
-    pub fn chevron(mut self) -> Self { self.chevron = true; self }
+    pub fn subtitle(mut self, v: impl Into<String>) -> Self {
+        self.subtitle = v.into();
+        self
+    }
+    pub fn meta(mut self, v: impl Into<String>) -> Self {
+        self.meta = v.into();
+        self
+    }
+    pub fn icon(mut self, v: IconName) -> Self {
+        self.icon = Some(v);
+        self
+    }
+    pub fn chevron(mut self) -> Self {
+        self.chevron = true;
+        self
+    }
 }
 
 #[component]
@@ -41,7 +53,11 @@ pub fn List(
     let refs: Vec<NodeRef<html::Div>> = (0..items.len()).map(|_| NodeRef::new()).collect();
     let all = items.clone();
     let none_selected = move || selected.get().is_none();
-    let label = if label.is_empty() { "列表".to_string() } else { label };
+    let label = if label.is_empty() {
+        "列表".to_string()
+    } else {
+        label
+    };
 
     let rows = items.into_iter().enumerate().map(|(i, item)| {
         let key_state = item.key.clone();

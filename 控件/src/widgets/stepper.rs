@@ -28,7 +28,9 @@ pub fn Stepper(
     let bump = move |delta: f64| {
         let next = (current() + delta).clamp(min, max);
         if (next - current()).abs() > f64::EPSILON {
-            if let Some(cb) = on_change { cb.run((next * 1_000_000.0).round() / 1_000_000.0); }
+            if let Some(cb) = on_change {
+                cb.run((next * 1_000_000.0).round() / 1_000_000.0);
+            }
         }
     };
 
@@ -47,7 +49,8 @@ pub fn Stepper(
                     <Icon name=IconName::PLUS size=12 />
                 </button>
             </div>
-        }.into_any()
+        }
+        .into_any()
     } else {
         view! {
             <div class="c-stepper" role="group" aria-label=label>
@@ -62,6 +65,7 @@ pub fn Stepper(
                     <Icon name=IconName::CHEVRON_DOWN size=10 />
                 </button>
             </div>
-        }.into_any()
+        }
+        .into_any()
     }
 }
