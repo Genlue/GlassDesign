@@ -35,7 +35,7 @@ fn App() -> impl IntoView {
         <AppShell>
             <Toolbar>
                 <ToolbarLead>
-                    <ToolbarTitle title="GlassDesign" subtitle="Rust 控件库 · P2" />
+                    <ToolbarTitle title="GlassDesign" subtitle=format!("Rust 控件库 · v{VERSION}") />
                 </ToolbarLead>
                 <ToolbarPills>
                     <Capsule size=CapsuleSize::Round>

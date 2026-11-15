@@ -27,7 +27,7 @@ proc.on('close', (code) => {
   html = html.replace(/<script id="gd-engine">[\s\S]*?<\/script>/g, '');
   html = html.replace(
     '<!DOCTYPE html>',
-    '<!DOCTYPE html>\n<!-- P1 静态视觉快照：由应用/ui 的 DOM 导出，不含 WASM 交互。\n     重新生成：node scripts/build-static.mjs -->'
+    '<!DOCTYPE html>\n<!-- 静态视觉快照：由 应用/ui 的 DOM 导出，不含 WASM 交互。\n     重新生成：node scripts/build-static.mjs（需 8777 端口在跑） -->'
   );
   writeFileSync(out, html, 'utf8');
   console.log(`${out} · ${(Buffer.byteLength(html) / 1024).toFixed(0)} KB`);

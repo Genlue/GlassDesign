@@ -14,7 +14,7 @@ Tauri 2 + Rust 的桌面界面库。
 | 仓库 | 是什么 | 状态 |
 |---|---|---|
 | `Golden Gate HTML Design` | 原库：Electron + 原生 HTML/CSS/ES Module，84 个命令式工厂 | **冻结为参照**，不再演进 |
-| `GlassDesign` | 新库：Tauri 2 + Rust + Leptos，声明式组件 + 静态 SVG 材质 | P1 骨架 |
+| `GlassDesign` | 新库：Tauri 2 + Rust + Leptos，声明式组件 + 静态 SVG 材质 | **P2 · 51 组件** |
 
 旧库不是“上一版”，是**视觉与行为的对照标本**：10,204 行 CSS、8 套玻璃参数、766 条断言都留在旧仓库，新库逐批对照移植。
 
@@ -64,11 +64,12 @@ GlassDesign/
 │   ├── 00-探索-脉络.md         现状、判断、选型、风险、路线
 │   ├── 01-控件契约.md          声明式 API：props / 受控 / 插槽 / 生命周期
 │   ├── 02-迁移矩阵.md          84 个工厂 → Rust 组件的分批与难度
-│   └── 03-实现清单.md          51 个已实现组件、简化边界与验证记录
+│   ├── 03-实现清单.md          51 个已实现组件、简化边界与验证记录
+│   └── 04-交接.md             现在到哪一步、为什么、坑在哪、下一步
 ├── 控件/                      ← 唯一复制单元
 │   ├── Cargo.toml
 │   ├── src/                   Rust 组件
-│   ├── css/                   tokens / optics / base / layout / components(63)
+│   ├── css/                   tokens / optics / base / layout / components(64)
 │   └── assets/glass-defs.svg  静态 SVG filter + 预计算贴图
 ├── 应用/
 │   ├── ui/                    Leptos 画廊（wasm）
@@ -108,6 +109,7 @@ cargo build -p glass-design-app
 - 第一次接触：本文件 + [`docs/00-探索-脉络.md`](docs/00-探索-脉络.md)。
 - 要动手写控件：先读 [`docs/01-控件契约.md`](docs/01-控件契约.md)，再查 [`docs/02-迁移矩阵.md`](docs/02-迁移矩阵.md)。
 - 要复制控件库到别的项目：读 [`控件/README.md`](控件/README.md)。
+- 要接手继续做：读 [`docs/04-交接.md`](docs/04-交接.md)。
 
 ## 下一步
 
