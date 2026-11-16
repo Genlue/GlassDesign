@@ -1,7 +1,8 @@
 use leptos::html;
 use leptos::prelude::*;
 
-use crate::base::overlay::{OverlayHost, OverlayId, OverlayKind};
+use crate::base::i18n::t;
+use crate::base::overlay::{ExitGate, OverlayHost, OverlayId, OverlayKind};
 
 /// 抽屉从哪条边拉出。
 #[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
@@ -44,6 +45,9 @@ pub fn Drawer(
     let grip_ref = NodeRef::<html::Button>::new();
     let host = OverlayHost::use_or_provide();
     let layer = RwSignal::new(None::<OverlayId>);
+    // 退场态：`open` 已 false，但抽屉还挂在屏幕上播过渡、也还留在栈上。
+    let closing = RwSignal::new(false);
+    let gate = ExitGate::new();
     // 拖动进度：1 = 完全展开，0 = 完全收起。CSS 用它做位移与遮罩浓度。
     let progress = RwSignal::new(1.0f64);
     let dragging = RwSignal::new(false);
@@ -52,6 +56,10 @@ pub fn Drawer(
     let width = if width == 0 { 320 } else { width };
 
     let close = move || {
+        // 幂等：退场态里再按 Esc / 再点遮罩（此时本层仍是栈顶）不能再叫一次关闭。
+        if !is_open() {
+            return;
+        }
         if let Some(cb) = on_close {
             cb.run(());
         }
@@ -59,6 +67,9 @@ pub fn Drawer(
 
     Effect::new(move |_| {
         if is_open() {
+            // 退场期间又打开：作废那张票，抽屉原地回到展开态（进度直接回 1）。
+            gate.cancel();
+            closing.set(false);
             progress.set(1.0);
             if layer.get_untracked().is_none() {
                 let id = host.push(OverlayKind::Drawer, Callback::new(move |_| close()));
@@ -70,10 +81,22 @@ pub fn Drawer(
                 }
             }
         } else if let Some(id) = layer.get_untracked() {
-            host.remove(id);
-            layer.set(None);
             drag.set_value(None);
             dragging.set(false);
+            if closing.get_untracked() {
+                // 已经在退场，绝不能再挂第二个出栈定时器。
+                return;
+            }
+            closing.set(true);
+            // 退场层不再接 Esc：连按两下要关两层，不能都打在这一层上。
+            host.mark_closing(id);
+            gate.arm().then(move || {
+                closing.try_set(false);
+                host.remove(id);
+                if layer.try_get_untracked() == Some(Some(id)) {
+                    layer.try_set(None);
+                }
+            });
         }
     });
 
@@ -144,9 +167,21 @@ pub fn Drawer(
         <div
             class="c-drawer c-drawer--fixed"
             data-side=side.token()
+            // `data-open` 跟着 open 走（不是退场态）：退场一开始遮罩就不再吃点击，
+            // 这 140ms 里点背景不会被一层正在淡出的遮罩吞掉。
             data-open=move || is_open().then_some("1")
             data-dragging=move || dragging.get().then_some("1")
-            style=move || if is_open() {
+            // 退场态给 CSS 用；收起时刻看栈句柄（下一段 style）。
+            data-state=move || {
+                if closing.get() {
+                    Some("closing")
+                } else if layer.get().is_some() {
+                    Some("open")
+                } else {
+                    None
+                }
+            }
+            style=move || if layer.get().is_some() {
                 let z = layer
                     .get()
                     .map(|id| host.z(id))
@@ -169,7 +204,7 @@ pub fn Drawer(
                     class="c-drawer__sheet c-glass-sheet"
                     role="dialog"
                     aria-modal="true"
-                    aria-label="抽屉"
+                    aria-label=move || t().drawer_label.to_string()
                     tabindex="-1"
                     node_ref=sheet_ref
                 >
@@ -177,7 +212,7 @@ pub fn Drawer(
                         <button
                             class="c-drawer__grip"
                             type="button"
-                            aria-label="向下拖动关闭"
+                            aria-label=move || t().drag_close.to_string()
                             node_ref=grip_ref
                             on:pointerdown=on_down
                             on:pointermove=on_move

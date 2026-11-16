@@ -29,6 +29,9 @@ pub fn FormPage() -> impl IntoView {
     let due = RwSignal::new("2026-11-20".to_string());
     let at24 = RwSignal::new("09:30".to_string());
     let at12 = RwSignal::new("14:05".to_string());
+    let due_span = RwSignal::new(("2026-11-14".to_string(), "2026-11-21".to_string()));
+    let night = RwSignal::new(("22:00".to_string(), "06:00".to_string()));
+    let at_sec = RwSignal::new("18:45:30".to_string());
     let form_name = RwSignal::new(String::new());
     let form_mail = RwSignal::new(String::new());
     let form_note = RwSignal::new(String::new());
@@ -300,8 +303,43 @@ pub fn FormPage() -> impl IntoView {
                                     label="提醒时间" hour12=true
                                     on_change=Callback::new(move |v| at12.set(v)) />
                             </Row>
+                            <Row label="日期区间" hint="两次点击定起止；先点止再点起会自动交换">
+                                <DateRange value=Signal::derive(move || due_span.get())
+                                    min="2026-11-01" max="2026-12-31"
+                                    label="账期"
+                                    on_change=Callback::new(move |v| due_span.set(v)) />
+                            </Row>
+                            <Row label="时间区间" hint="跨零点合法：22:00 → 06:00 是八小时">
+                                <TimeRange
+                                    start=Signal::derive(move || night.get().0)
+                                    end=Signal::derive(move || night.get().1)
+                                    label="值守时段"
+                                    on_change=Callback::new(move |v| night.set(v)) />
+                            </Row>
+                            <Row label="带秒" hint="值写成 HH:mm:ss，秒按 15 秒步进">
+                                <TimePicker value=Signal::derive(move || at_sec.get())
+                                    label="采集时刻" show_seconds=true step_secs=15
+                                    on_change=Callback::new(move |v| at_sec.set(v)) />
+                            </Row>
+                            <Row label="网格" hint="三列：↑↓ 格内移动、←→ 换列、PageUp/Down 翻一屏">
+                                <TimePicker value=Signal::derive(move || at_sec.get())
+                                    label="网格时间" grid=true show_seconds=true step_secs=15
+                                    on_change=Callback::new(move |v| at_sec.set(v)) />
+                            </Row>
                             <span class="c-subtitle">
-                                {move || format!("{} · {} · {}", due.get(), at24.get(), at12.get())}
+                                {move || {
+                                    format!(
+                                        "{} · {} · {} · {} → {} · {} → {} · {}",
+                                        due.get(),
+                                        at24.get(),
+                                        at12.get(),
+                                        due_span.get().0,
+                                        due_span.get().1,
+                                        night.get().0,
+                                        night.get().1,
+                                        at_sec.get(),
+                                    )
+                                }}
                             </span>
                         </div>
                     </Card>

@@ -109,3 +109,40 @@
   will-change: transform, opacity;
 }
 
+
+/* ---- 退场（2026-11 增补）----
+   气泡与模态共用同一套时序：面板在 `open=false` 之后仍留在屏幕上 140ms
+   （`base/overlay.rs` 的 EXIT_MS），过渡取 --dur-1 = 120ms，必须 ≤ EXIT_MS。
+   `pointer-events:none` 让正在淡出的那一层不再拦点击：点外关闭时，
+   这一次点击本来就该落到别处。 */
+.c-popover[data-state="closing"] {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.99);
+  pointer-events: none;
+  transition:
+    opacity var(--dur-1) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
+}
+
+/* 模态的退场挂在遮罩上：面板是它的子节点，一个属性同时驱动两层 ——
+   只写面板会在遮罩消失的那一帧露出一个仍然压暗的背景。 */
+.c-dialog-scrim[data-state="closing"] {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-1) var(--ease-out);
+}
+
+/* 面板往「屏幕里」退一点：缩放 + 下移比单纯淡出更像一层玻璃被收走 */
+.c-dialog-scrim[data-state="closing"] .c-dialog {
+  transform: translateY(6px) scale(0.985);
+  transition: transform var(--dur-1) var(--ease-out);
+}
+
+/* 减动效：过渡归零（Rust 侧仍等 EXIT_MS，见 overlay.rs 的注释） */
+@media (prefers-reduced-motion: reduce) {
+  .c-popover[data-state="closing"],
+  .c-dialog-scrim[data-state="closing"],
+  .c-dialog-scrim[data-state="closing"] .c-dialog {
+    transition-duration: 0s;
+  }
+}

@@ -167,3 +167,26 @@
     transition-duration: 1ms;
   }
 }
+
+/* ---- 退场（2026-11 增补）----
+   和 Dialog 同源：遮罩带 `data-state="closing"` 时整体淡出，面板同时微缩下移。
+   时长 --dur-1（120ms）必须 ≤ `base/overlay.rs` 的 EXIT_MS（140ms），
+   出栈（含 inert 解除与焦点归还）由那边的定时器在 EXIT_MS 后触发。 */
+.c-sheet-scrim[data-state="closing"] {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-1) var(--ease-out);
+}
+
+.c-sheet-scrim[data-state="closing"] .c-sheet {
+  transform: translateY(8px) scale(0.985);
+  transition: transform var(--dur-1) var(--ease-out);
+}
+
+/* 减动效：过渡归零（Rust 侧仍等 EXIT_MS） */
+@media (prefers-reduced-motion: reduce) {
+  .c-sheet-scrim[data-state="closing"],
+  .c-sheet-scrim[data-state="closing"] .c-sheet {
+    transition-duration: 0s;
+  }
+}

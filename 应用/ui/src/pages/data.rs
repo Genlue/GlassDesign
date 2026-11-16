@@ -97,6 +97,35 @@ pub fn DataPage() -> impl IntoView {
         })
         .collect();
 
+    /* ------------------------------------------ 三件套：受控选中 / 服务端排序 / 行内编辑 */
+
+    let edit_columns = vec![
+        DataColumn::new("name", "名称").width(180.0).sortable().editable(),
+        DataColumn::new("kind", "类型").width(110.0).editable(),
+        DataColumn::new("size", "大小 (KB)").width(120.0).right().sortable().editable(),
+    ];
+    // 行数据在调用方：提交后由这里改写，组件只上报 CellEdit。
+    let edit_rows = RwSignal::new(
+        (1..=6)
+            .map(|i| {
+                let kind = ["设计", "文档", "图片"][i % 3];
+                DataTableRow::new(
+                    format!("e{i}"),
+                    vec![
+                        format!("素材 {i:02}"),
+                        kind.to_string(),
+                        // 三位数：演示里的字符串比较与数值比较同序，别把排序差异
+                        // 误当成组件的 bug。
+                        format!("{}", 120 + i * 6),
+                    ],
+                )
+            })
+            .collect::<Vec<_>>(),
+    );
+    let picked = RwSignal::new(Some(vec!["e2".to_string()]));
+    // 「服务端」在这一页就是调用方自己排序；组件只上报 SortSpec、不再本地排。
+    let server_sort = RwSignal::new(Some(SortSpec::new("name", SortDir::Asc)));
+
     let tree_selected = RwSignal::new("src".to_string());
     let tree_nodes = vec![
         TreeNode::new("root", "glass-design")
@@ -194,6 +223,16 @@ pub fn DataPage() -> impl IntoView {
         })
         .collect();
 
+    // 变高行：正文长度按 n % 4 递增（约 1–4 行），高度必须真的不一样，
+    // 否则「实测校正」这件事看不出来。
+    let var_items: Vec<CollectionItem> = (0..600)
+        .map(|i| {
+            let line = "行高不一的示例正文，用来看清窗口校正。";
+            let body = line.repeat((i % 4 + 1) * 4);
+            CollectionItem::new(format!("h{i}"), format!("变高项 {i:03}")).subtitle(body)
+        })
+        .collect();
+
     view! {
         <div class="l-scroll" style="padding:24px 32px 64px">
             <div class="l-stack l-stack--6">
@@ -272,7 +311,7 @@ pub fn DataPage() -> impl IntoView {
                         <div class="l-pad">
                             <div class="l-stack l-stack--6">
                                 <div class="l-stack l-stack--3">
-                                    <p class="c-subtitle">"5 列 × 16 行：名称 / 大小可排序，类型列 140px 下限，多选（Ctrl/Cmd 切换、Shift 连选）。"</p>
+                                    <p class="c-subtitle">"5 列 × 16 行：名称 / 大小可排序，类型列 140px 下限，多选（Ctrl/Cmd 切换、Shift 连选、Ctrl+A 全选）；↑/↓ 只移焦点，Space 切换选中。"</p>
                                     <div style="width:720px;height:320px;display:grid">
                                         <DataTable
                                             columns=table_columns
@@ -293,6 +332,59 @@ pub fn DataPage() -> impl IntoView {
                                             label="节点"
                                         />
                                     </div>
+                                </div>
+                                <div class="l-stack l-stack--3">
+                                    <p class="c-subtitle">"三件套：选中受控（选中集在调用方，下面那行计数走的是调用方的值）；排序服务端（组件只报 SortSpec，行序由调用方给）；双击单元格或焦点行按 Enter / F2 编辑，Enter 或失焦提交、Esc 取消，名称不能为空、大小必须是数字。"</p>
+                                    <div style="width:720px;height:260px;display:grid">
+                                        {move || {
+                                            // 这里就是「服务端」：拿 SortSpec 自己排，组件不再本地排。
+                                            let mut rows = edit_rows.get();
+                                            if let Some(spec) = server_sort.get() {
+                                                let ci = edit_ci(&spec.key);
+                                                rows.sort_by(|a, b| {
+                                                    let ord = a.cells.get(ci).cmp(&b.cells.get(ci));
+                                                    if spec.dir == SortDir::Asc { ord } else { ord.reverse() }
+                                                });
+                                            }
+                                            view! {
+                                                <DataTable
+                                                    columns=edit_columns.clone()
+                                                    rows=rows
+                                                    selection=SelectionMode::Multiple
+                                                    selected=picked
+                                                    on_selection_change=Callback::new(move |v| picked.set(Some(v)))
+                                                    sort=server_sort
+                                                    on_sort_change=Callback::new(move |s| server_sort.set(Some(s)))
+                                                    on_cell_commit=Callback::new(move |edit: CellEdit| {
+                                                        edit_rows.update(|rows| {
+                                                            if let Some(row) = rows.iter_mut().find(|r| r.id == edit.row_id) {
+                                                                if let Some(cell) = row.cells.get_mut(edit_ci(&edit.key)) {
+                                                                    *cell = edit.value;
+                                                                }
+                                                            }
+                                                        });
+                                                    })
+                                                    validate=Callback::new(move |edit: CellEdit| -> Option<String> {
+                                                        match edit.key.as_str() {
+                                                            "name" if edit.value.trim().is_empty() => Some("名称不能为空".to_string()),
+                                                            "size" if edit.value.trim().parse::<f64>().is_err() => Some("必须是数字".to_string()),
+                                                            _ => None,
+                                                        }
+                                                    })
+                                                    label="可编辑素材"
+                                                />
+                                            }
+                                        }}
+                                    </div>
+                                    <p class="c-subtitle">
+                                        {move || {
+                                            format!(
+                                                "调用方持有选中集：已选 {} 项；当前排序 {:?}。",
+                                                picked.get().map(|v| v.len()).unwrap_or(0),
+                                                server_sort.get(),
+                                            )
+                                        }}
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -378,6 +470,18 @@ pub fn DataPage() -> impl IntoView {
                                         label="大资源网格"
                                     />
                                 </div>
+                                <div class="l-stack l-stack--3">
+                                    <p class="c-subtitle">
+                                        "变高行：600 项，每项正文约 1–4 行（第 n 项按 n % 4 递增），视口 420px。先按估计高度排、量到真高后校正；DOM 里只有窗口量级的项，↑↓ 先滚进视口再聚焦。"
+                                    </p>
+                                    <CollectionView
+                                        items=var_items
+                                        layout=CollectionLayout::List
+                                        max_height=420.0
+                                        virtual_var_height=true
+                                        label="变高列表"
+                                    />
+                                </div>
                             </div>
                         </div>
                     </Card>
@@ -405,5 +509,15 @@ pub fn DataPage() -> impl IntoView {
 
             </div>
         </div>
+    }
+}
+
+/// 「可编辑素材」那三列的 cells 下标固定（name / kind / size）。
+/// 一页演示不值得再建一层「列 key → 下标」的映射表，写死在调用方最直白。
+fn edit_ci(key: &str) -> usize {
+    match key {
+        "kind" => 1,
+        "size" => 2,
+        _ => 0,
     }
 }

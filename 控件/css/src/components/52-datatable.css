@@ -408,4 +408,72 @@
   outline-offset: -2px;
 }
 
+/* ==========================================================================
+   行内编辑 / 行焦点（P4 追加）
+   —— 全部追加在上面的度量之后，一个字都没改。这里只有一条硬约束：
+      编辑态**不许改变行高**。虚拟化的窗口数学是「start × --dt-row-h」，
+      行高一变，撑高行与实际 DOM 位置立刻错位（红线 5）。
+      做法：输入框与错误气泡都绝对定位，完全不参与行内排版。
+   ========================================================================== */
+
+/* 已有规则把编辑格设成 overflow: visible（让焦点环画到格外），但没给定位上下文；
+   绝对定位的子元素需要一个 position: relative 的祖先，否则会以滚动容器为基准。 */
+.c-datatable__cell[data-editing="1"] {
+  position: relative;
+}
+
+/* 输入框压在单元格内部：top/left/right + 显式 height 都从 --dt-row-h 算，
+   所以它既不撑高行，也不会因为内容多少变成另一个高度。
+   高度写死是必须的 —— input 是替换元素，只给 top/bottom 时 height 仍取固有高度。 */
+.c-datatable__editor {
+  position: absolute;
+  top: 1px;
+  right: 2px;
+  left: 2px;
+  height: calc(var(--dt-row-h) - 2px);
+  box-sizing: border-box;
+  padding: 0 var(--s-2);
+  border: 0;
+  border-radius: var(--r-xs);
+  background: var(--surface-control-solid);
+  box-shadow: inset 0 0 0 0.5px var(--line-strong), 0 0 0 3px var(--accent-ring);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--fs-12);
+  /* 焦点环由上面那圈 accent-ring 统一提供，输入元素自己不再画第二圈 */
+  outline: none;
+}
+
+/* 校验失败的提示：同样绝对定位（top: 100%），只向下压住下一行、不占本行高度。
+   pointer-events: none —— 气泡不该抢走本格或相邻格的点击。 */
+.c-datatable__cell-error {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 4;
+  margin-top: var(--s-1);
+  padding: 0 var(--s-2);
+  border-radius: var(--r-xs);
+  background: var(--danger-soft);
+  box-shadow: inset 0 0 0 0.5px var(--danger);
+  color: var(--text-primary);
+  font-size: var(--fs-11);
+  line-height: 16px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* 行是 roving tabindex 的落点（全表只有一个 tabindex="0"）：
+   没有这条，键盘用户按 Tab 进表后看不出自己在哪一行。
+   outline-offset 取负值，环画在行内侧，不会被相邻行盖住。 */
+.c-datatable__row:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: -2px;
+}
+
+/* 只读格不该有「可以点进去改」的暗示：光标保持箭头，与可选行的文字光标区分开 */
+.c-datatable__cell[aria-readonly="false"] {
+  cursor: text;
+}
+
 

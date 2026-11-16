@@ -8,9 +8,10 @@ use wasm_bindgen::closure::Closure;
 use wasm_bindgen::{JsCast, JsValue};
 
 use crate::base::anchor::{self, AnchorSpec, AnchorWatch, Placement, Side};
+use crate::base::i18n::t;
 use crate::base::overlay::{
     active_element, first_focusable, focus_is_free, listen_document, listen_window, schedule,
-    GlobalListener, OverlayHost, OverlayId, OverlayKind,
+    ExitGate, GlobalListener, OverlayHost, OverlayId, OverlayKind, ParentScope,
 };
 
 /// 贴边安全距离：与菜单共用同一套几何约定（8px），窗口圆角不会切掉面板。
@@ -303,13 +304,14 @@ pub fn Popover(
     let offset = if offset == 0.0 { EDGE } else { offset };
     // Portal 的 children 必须是 `Fn`：`Children` 是 FnOnce，只能取一次后交给面板。
     let children_store = StoredValue::new_local(children);
-    let label_store = StoredValue::new_local(if label.is_empty() {
-        "浮层".to_string()
-    } else {
-        label
-    });
+    // 空 label 不在这里兜底：属性渲染时再查表，切语言才能立刻反映到 aria-label。
+    let label_store = StoredValue::new_local(label);
 
     let is_open = move || open.get().unwrap_or(false);
+    // 退场态：open 已经为 false，但面板还留在屏幕上播过渡、也还留在栈上。
+    // 真正出栈（`layer = None`）由 `gate` 的票在 EXIT_MS 之后触发。
+    let closing = RwSignal::new(false);
+    let gate = ExitGate::new();
     let close = move || {
         if let Some(cb) = on_close {
             cb.run(());
@@ -326,6 +328,9 @@ pub fn Popover(
 
     Effect::new(move |_| {
         if is_open() {
+            // 退场期间又打开：作废那张票，面板原地回到 open 态（坐标没被清过，不会跳）。
+            gate.cancel();
+            closing.set(false);
             let Some(trigger_el) = wrap_ref.get().map(|w| w.unchecked_into::<web_sys::Element>())
             else {
                 return;
@@ -341,8 +346,10 @@ pub fn Popover(
                     }),
                 );
                 layer.set(Some(id));
-                restore.set_value(true);
             }
+            // 每次打开都重置「该不该还焦点」：退场期间重开共用同一个 return_to，
+            // 只有清标志位，不能连 target 一起清 —— 否则重开后再关就没人可还。
+            restore.set_value(true);
             // 点外关闭要同时认**触发器和面板**两个子树：面板已经 Portal 到 body，
             // 不在组件 DOM 里，只查触发器会把「点面板内部」判成点外。
             if outside.with_value(|v| v.is_none()) {
@@ -361,7 +368,15 @@ pub fn Popover(
                         .get()
                         .map(|w| w.contains(Some(el.unchecked_ref::<web_sys::Node>())))
                         .unwrap_or(false);
-                    if !inside_panel && !inside_trigger {
+                    // 第三棵子树：挂在本气泡下面的浮层面板（下拉 / 取色器 / 日期…）。
+                    // 它们是 `<Portal>` 到 body 的，DOM 上不在 `panel_key` 里，只能靠 lineage 认；
+                    // 少了这一条，点下拉的选项会把气泡一起收掉。
+                    let node: &web_sys::Node = el.unchecked_ref();
+                    let inside_descendant = layer
+                        .get_untracked()
+                        .map(|id| host.owns_descendant(id, node))
+                        .unwrap_or(false);
+                    if !inside_panel && !inside_trigger && !inside_descendant {
                         restore.set_value(false);
                         close();
                     }
@@ -442,26 +457,47 @@ pub fn Popover(
                 }));
             });
         } else {
-            if let Some(id) = layer.get_untracked() {
-                host.remove(id);
-                layer.set(None);
-            }
+            // 监听先拆：面板还要在屏幕上留 EXIT_MS，这期间不该再跟随锚点、
+            // 也不该把「点到正在淡出的面板」再判一次点外。
             outside.set_value(None);
             watch.set_value(None);
-            if restore.get_value() {
-                if let Some(el) = return_to.get_value() {
-                    schedule(move || {
-                        // 焦点已经被别处接住（同 rank 仲裁换了另一个浮层上来）就别抢：
-                        // 抢回来会让新面板里的键盘操作全部失效。
-                        let own = panel_ref.get().map(|p| p.unchecked_into::<web_sys::Node>());
-                        if el.is_connected() && focus_is_free(own.as_ref()) {
-                            let _ = el.focus();
-                        }
-                    });
-                }
+            let Some(id) = layer.get_untracked() else {
+                // 从没打开过（首次渲染）：这里只是把标志位摆正。
+                restore.set_value(true);
+                return_to.set_value(None);
+                return;
+            };
+            if closing.get_untracked() {
+                // Esc 连按：这一层已经在退场，绝不能再挂第二个出栈定时器。
+                return;
             }
-            restore.set_value(true);
-            return_to.set_value(None);
+            closing.set(true);
+            // 退场层不再接 Esc：连按两下要关两层，不能都打在这一层上。
+            host.mark_closing(id);
+            let should_restore = restore.get_value();
+            let back_to = return_to.get_value();
+            gate.arm().then(move || {
+                // 退场播完才真正收起：`layer` 归 None → 面板 display:none。
+                closing.try_set(false);
+                host.remove(id);
+                if layer.try_get_untracked() == Some(Some(id)) {
+                    layer.try_set(None);
+                }
+                restore.set_value(true);
+                return_to.set_value(None);
+                if should_restore {
+                    if let Some(el) = back_to {
+                        schedule(move || {
+                            // 焦点已经被别处接住（同 rank 仲裁换了另一个浮层上来）就别抢：
+                            // 抢回来会让新面板里的键盘操作全部失效。
+                            let own = panel_ref.get().map(|p| p.unchecked_into::<web_sys::Node>());
+                            if el.is_connected() && focus_is_free(own.as_ref()) {
+                                let _ = el.focus();
+                            }
+                        });
+                    }
+                }
+            });
         }
     });
 
@@ -484,11 +520,30 @@ pub fn Popover(
                 class="c-popover c-glass-sheet"
                 role="dialog"
                 aria-modal="false"
-                aria-label=label_store.get_value()
+                aria-label=move || {
+                    let own = label_store.get_value();
+                    if own.is_empty() {
+                        t().popover_label.to_string()
+                    } else {
+                        own
+                    }
+                }
                 tabindex="-1"
                 node_ref=panel_ref
+                // 退场态给 CSS 用。真正收起不看它，看栈句柄（下一段 style）。
+                data-state=move || {
+                    if closing.get() {
+                        Some("closing")
+                    } else if layer.get().is_some() {
+                        Some("open")
+                    } else {
+                        None
+                    }
+                }
                 style=move || {
-                    if !is_open() {
+                    // 「在场上」判的是栈句柄而不是 `open`：关闭后要先留在屏幕上播完
+                    // 退场动画，`layer` 归 None 才是真正的收起时刻。
+                    if layer.get().is_none() {
                         return "display:none".to_string();
                     }
                     let z = layer
@@ -505,10 +560,14 @@ pub fn Popover(
                 }
             >
                 // 面板常驻（关闭时 display:none）：`children` 是 FnOnce，不能每次打开重建。
+                // `ParentScope` 让内容里的下拉 / 取色器认这一层当父浮层（push_adopted），
+                // 它们打开时就不会把气泡自己请出。注意 children 必须**在 ParentScope 里**
+                // 被调用，否则 use_context 看不到父层。
                 {children_store
                     .try_update_value(|c| c.take())
                     .flatten()
-                    .map(|c| c())}
+                    .map(|c| view! { <ParentScope id=layer>{c()}</ParentScope> })}
+
             </div>
         </Portal>
     }

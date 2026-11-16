@@ -6,6 +6,7 @@ use leptos::prelude::*;
 use wasm_bindgen::JsCast;
 
 use crate::base::anchor::{self, AnchorSpec, AnchorWatch};
+use crate::base::i18n::t;
 use crate::base::icon::{Icon, IconName};
 use crate::base::overlay::{schedule, OverlayHost, OverlayId, OverlayKind};
 
@@ -76,7 +77,8 @@ pub fn Select(
         if open.get_untracked() || layer.get_untracked().is_some() {
             return;
         }
-        let id = host.push(OverlayKind::Menu, dismiss);
+        // `push_adopted`：在气泡 / 流程面板里时挂到容器那层下面，否则等价 `push`。
+        let id = host.push_adopted(OverlayKind::Menu, dismiss);
         layer.set(Some(id));
         open.set(true);
     };
@@ -112,6 +114,10 @@ pub fn Select(
             // Portal 还没挂好：NodeRef 是响应式的，挂上后会再跑一遍。
             return;
         };
+        // 把面板交给栈：外层气泡的「点外关闭」要认出「这一下点的是我的子面板」。
+        if let Some(id) = layer.get_untracked() {
+            host.bind(id, panel.clone().into());
+        }
         schedule(move || {
             // 这一帧里可能已经关了（快速开→关）：别再建一个新的跟随句柄，
             // 否则关闭后监听器还活着，下一个滚动事件又会把它摆回来。
@@ -168,7 +174,7 @@ pub fn Select(
                 }
             >
                 <span class="l-fill" style="text-align:left">
-                    {move || if has_value() { current_label() } else { "请选择".to_string() }}
+                    {move || if has_value() { current_label() } else { t().select_placeholder.to_string() }}
                 </span>
                 <span style="display:grid" style:transform=move || format!("rotate({}deg)", if open.get() { 180 } else { 0 })>
                     <Icon name=IconName::CHEVRON_DOWN size=12 />

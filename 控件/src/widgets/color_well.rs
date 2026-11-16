@@ -104,7 +104,8 @@ pub fn ColorWell(
             return;
         }
         // 只负责「开」：面板 Portal 到 body 之后再由 effect 量高度定位。
-        let id = host.push(OverlayKind::Popover, dismiss);
+        // `push_adopted`：在气泡 / 流程面板里时挂到容器那层下面，否则等价 `push`。
+        let id = host.push_adopted(OverlayKind::Popover, dismiss);
         layer.set(Some(id));
         open.set(true);
     };
@@ -156,6 +157,10 @@ pub fn ColorWell(
             // Portal 还没挂好：NodeRef 是响应式的，挂上后会再跑一遍。
             return;
         };
+        // 把面板交给栈：外层气泡的「点外关闭」要认出「这一下点的是我的子面板」。
+        if let Some(id) = layer.get_untracked() {
+            host.bind(id, panel.clone().into());
+        }
 
         // 点外关闭要同时认**触发器和面板**两个子树：面板已 Portal 到 body，
         // 不在组件 DOM 里，只查井会把「点面板内部」判成点外（SV 面板点不动）。

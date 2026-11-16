@@ -206,3 +206,25 @@
   padding-top: var(--s-7);
 }
 
+
+/* ---- 退场（2026-11 增补）----
+   抽屉的位移由 `--dw-p` 与拖拽过渡管着（--dur-3 = 320ms，长于 EXIT_MS），
+   所以退场不再动位移：整块容器淡出 --dur-1（120ms ≤ overlay.rs 的 EXIT_MS 140ms）。
+   淡出期间 `pointer-events` 全关：`data-open` 已经掉了，遮罩不再吃点击，
+   但面板自己还挂着 auto，不显式关掉就会在最后 140ms 里继续吞掉一次点击。 */
+.c-drawer[data-state="closing"] {
+  opacity: 0;
+  transition: opacity var(--dur-1) var(--ease-out);
+}
+
+.c-drawer[data-state="closing"] .c-drawer__scrim,
+.c-drawer[data-state="closing"] .c-drawer__sheet {
+  pointer-events: none;
+}
+
+/* 减动效：过渡归零（Rust 侧仍等 EXIT_MS） */
+@media (prefers-reduced-motion: reduce) {
+  .c-drawer[data-state="closing"] {
+    transition-duration: 0s;
+  }
+}

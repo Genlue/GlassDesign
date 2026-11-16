@@ -11,6 +11,7 @@ pub mod layout;
 pub mod widgets;
 
 pub mod prelude {
+    pub use crate::base::i18n::{fill, provide_locale, t, Locale, Strings};
     pub use crate::base::icon::{Icon, IconName, ICON_COUNT};
     pub use crate::base::install::{install, InstallReport, VERSION};
     pub use crate::base::overlay::{OverlayHost, OverlayId, OverlayKind, Z_TOAST};
@@ -29,8 +30,10 @@ pub mod prelude {
         CollectionItem, CollectionLayout, CollectionView,
     };
     pub use crate::widgets::combobox::{Combobox, ComboboxOption};
-    pub use crate::widgets::data_table::{ColAlign, DataColumn, DataTable, DataTableRow};
-    pub use crate::widgets::datetime::{DatePicker, TimePicker};
+    pub use crate::widgets::data_table::{
+        CellEdit, ColAlign, DataColumn, DataTable, DataTableRow, SortSpec,
+    };
+    pub use crate::widgets::datetime::{DatePicker, DateRange, TimePicker, TimeRange};
     pub use crate::widgets::dialog::Dialog;
     pub use crate::widgets::disclosure::Disclosure;
     pub use crate::widgets::document_tabs::{DocumentTab, DocumentTabs};

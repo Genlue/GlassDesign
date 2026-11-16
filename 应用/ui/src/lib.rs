@@ -13,6 +13,10 @@ pub fn start() {
 #[component]
 fn App() -> impl IntoView {
     let theme = Theme::provide();
+    // 界面语言：控件库内部只认 `Locale`，切换器与 provider 都在这一层，
+    // 所以工具栏那个分段与所有控件的文案看的是同一个信号。
+    let locale = RwSignal::new_local(Locale::ZhCn);
+    provide_locale(locale);
     let section = RwSignal::new("基础".to_string());
 
     let toggle_theme = Callback::new(move |_| {
@@ -21,6 +25,18 @@ fn App() -> impl IntoView {
         } else {
             ThemeMode::Dark
         });
+    });
+
+    let lang_options = vec![
+        SegmentedOption::new("zh", "中").title("中文"),
+        SegmentedOption::new("en", "EN").title("English"),
+    ];
+    let lang_value = Signal::derive(move || match locale.get() {
+        Locale::ZhCn => "zh".to_string(),
+        Locale::En => "en".to_string(),
+    });
+    let set_lang = Callback::new(move |v: String| {
+        locale.set(if v == "en" { Locale::En } else { Locale::ZhCn });
     });
 
     let page = move || match section.get().as_str() {
@@ -43,6 +59,13 @@ fn App() -> impl IntoView {
                 <ToolbarPills>
                     <Capsule size=CapsuleSize::Round>
                         <IconButton icon=IconName::MOON label="切换明暗" on_click=toggle_theme />
+                    </Capsule>
+                    <Capsule size=CapsuleSize::Round>
+                        <Segmented
+                            options=lang_options
+                            value=lang_value
+                            on_change=set_lang
+                        />
                     </Capsule>
                 </ToolbarPills>
             </Toolbar>

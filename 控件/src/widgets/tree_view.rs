@@ -21,6 +21,7 @@ use leptos::prelude::*;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::{JsCast, JsValue};
 
+use crate::base::i18n::t;
 use crate::base::icon::{Icon, IconName};
 use crate::base::virtual_window::{self, Window};
 
@@ -132,6 +133,9 @@ fn flatten(
     parent: Option<&str>,
     depth: usize,
     out: &mut Vec<TreeRow>,
+    // 加载行的文案由调用方给：这个函数是纯函数（无 context），
+    // 文案表在 memo 里查一次再传进来，切语言时 memo 跟着重算。
+    loading_label: &str,
 ) {
     // 值树不可能成环，但深度护栏能挡住调用方手搓出来的畸形数据。
     if depth > 64 {
@@ -160,7 +164,7 @@ fn flatten(
         match &node.state {
             Some(TreeState::Loading) => out.push(TreeRow {
                 key: format!("{}::state", node.id),
-                label: "正在加载…".to_string(),
+                label: loading_label.to_string(),
                 icon: None,
                 badge: None,
                 disabled: true,
@@ -186,7 +190,14 @@ fn flatten(
                 first_child: None,
                 kind: RowKind::Error(message.clone()),
             }),
-            None => flatten(&node.children, expanded, Some(&node.id), depth + 1, out),
+            None => flatten(
+                &node.children,
+                expanded,
+                Some(&node.id),
+                depth + 1,
+                out,
+                loading_label,
+            ),
         }
     }
 }
@@ -301,10 +312,15 @@ pub fn TreeView(
     /// 0 表示不限制：高度由外部容器给，行为与以前一致。
     #[prop(default = 0.0)] max_height: f64,
 ) -> impl IntoView {
-    let label = if label.is_empty() {
-        "树".to_string()
-    } else {
-        label
+    // 兜底查文案表，留在属性闭包里（切语言要跟着变）。
+    let label_store = StoredValue::new_local(label);
+    let label = move || {
+        let own = label_store.get_value();
+        if own.is_empty() {
+            t().tree_label.to_string()
+        } else {
+            own
+        }
     };
 
     // 两个条件都满足才真正虚拟化：只给行高没有视口，量不出「该渲染哪几行」。
@@ -328,14 +344,15 @@ pub fn TreeView(
     let rows_nodes = nodes.clone();
     let rows = Memo::new(move |_| {
         let mut out = Vec::new();
-        flatten(&rows_nodes, &expanded.get(), None, 0, &mut out);
+        flatten(&rows_nodes, &expanded.get(), None, 0, &mut out, t().loading);
         out
     });
 
     let nav_nodes = nodes.clone();
     let nav_ids = Memo::new(move |_| {
         let mut out = Vec::new();
-        flatten(&nav_nodes, &expanded.get(), None, 0, &mut out);
+        // 这里只取 key / 可导航性，不渲染加载行文案 —— 传空串，也就不会追踪语言。
+        flatten(&nav_nodes, &expanded.get(), None, 0, &mut out, "");
         out.into_iter()
             .filter(|r| matches!(r.kind, RowKind::Node) && !r.disabled)
             .map(|r| r.key)
@@ -344,7 +361,7 @@ pub fn TreeView(
 
     let (initial_focus, initial_total) = {
         let mut out = Vec::new();
-        flatten(&nodes, &init_expanded, None, 0, &mut out);
+        flatten(&nodes, &init_expanded, None, 0, &mut out, t().loading);
         let total = out.len();
         let focus = out
             .into_iter()
@@ -604,7 +621,7 @@ pub fn TreeView(
                                         }
                                     }
                                 >
-                                    "重试"
+                                    {move || t().retry}
                                 </button>
                             }
                         })}
@@ -810,7 +827,7 @@ pub fn TreeView(
             on:scroll=on_scroll
         >
             <Show when=move || rows.get().is_empty()>
-                <div class="c-tree__empty">"暂无内容"</div>
+                <div class="c-tree__empty">{move || t().empty_tree}</div>
             </Show>
             {virtual_mode.then(|| {
                 view! {

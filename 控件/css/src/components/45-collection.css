@@ -178,3 +178,36 @@
   display: none;
 }
 
+/* --------------------------------------------------------------------------
+   变高行（P4 追加）
+   —— `data-varheight="1"` 只在「列表 + max_height + virtual_var_height」时出现。
+      行高由内容决定、实测后写回 Rust 的前缀和，所以几何不可能再写成
+      「行数 × 行距」：撑高行的高度由 Rust 以像素给（--pad-h），这里只负责
+      「收下这个像素值」和「0 就不占位」。
+   -------------------------------------------------------------------------- */
+
+/* 撑高行吃 Rust 给的像素高度（前缀和）。上撑高行已经把身后那个 gap 减掉了。 */
+.c-collection[data-virtual="1"][data-varheight="1"] .c-collection__pad {
+  height: var(--pad-h, 0px);
+}
+
+/* 0 高度必须整块不渲染：仍然留一个盒子的话，grid 会为它多算一个 gap，
+   底部就会多出一条 4px 缝（同一个坑在固定行高处踩过）。 */
+.c-collection[data-virtual="1"][data-varheight="1"] .c-collection__pad[data-pad="0"] {
+  display: none;
+}
+
+/* 变高的项不能钉死高度：钉成「行距 - gap」的话，量出来的永远是估计值，
+   校正永远不生效。改回内容高，下限沿用 --item-h（估计值）。 */
+.c-collection[data-virtual="1"][data-varheight="1"] .c-collection__item {
+  height: auto;
+  min-height: var(--item-h, 32px);
+  overflow: visible;
+}
+
+/* 变高的来源是「多行正文」，而 26-list 的 __subtitle 是 nowrap + 省略号。
+   只在变高模式下放开折行，其他列表的视觉一个像素都不动。 */
+.c-collection[data-varheight="1"] .c-list__subtitle {
+  white-space: normal;
+}
+

@@ -2966,6 +2966,29 @@ html[data-focused="0"] .c-nav__item[aria-selected="true"] .c-nav__icon {
 }
 
 
+/* ---- 退场（2026-11 增补）----
+   关闭时面板要先留在屏幕上播一段过渡：同一帧 `display:none` 会被眼睛读成闪断。
+   时长取 --dur-1（120ms），必须 ≤ `base/overlay.rs` 的 EXIT_MS（140ms）——
+   Rust 只管等 140ms 之后出栈，CSS 慢过它就会被硬切。
+   `pointer-events:none`：正在淡出的菜单不能再吃掉导致关闭的那次点击，
+   否则「点外面 → 菜单关掉 → 点击落空」看起来像点了个寂寞。 */
+.c-menu[data-state="closing"] {
+  opacity: 0;
+  transform: translateY(-2px) scale(0.99);
+  pointer-events: none;
+  transition:
+    opacity var(--dur-1) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
+}
+
+/* 减动效：过渡直接归零。Rust 侧仍等 EXIT_MS（不读 media query，理由见 overlay.rs），
+   代价只是面板多留 140ms 不可见 —— 比提前出栈、动画还在播安全。 */
+@media (prefers-reduced-motion: reduce) {
+  .c-menu[data-state="closing"] {
+    transition-duration: 0s;
+  }
+}
+
 
 /* ===== components/14-toast.css ===== */
 /* ==========================================================================
@@ -5025,6 +5048,43 @@ html[data-focused="0"] .c-nav__item[aria-selected="true"] .c-nav__icon {
 }
 
 
+/* ---- 退场（2026-11 增补）----
+   气泡与模态共用同一套时序：面板在 `open=false` 之后仍留在屏幕上 140ms
+   （`base/overlay.rs` 的 EXIT_MS），过渡取 --dur-1 = 120ms，必须 ≤ EXIT_MS。
+   `pointer-events:none` 让正在淡出的那一层不再拦点击：点外关闭时，
+   这一次点击本来就该落到别处。 */
+.c-popover[data-state="closing"] {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.99);
+  pointer-events: none;
+  transition:
+    opacity var(--dur-1) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
+}
+
+/* 模态的退场挂在遮罩上：面板是它的子节点，一个属性同时驱动两层 ——
+   只写面板会在遮罩消失的那一帧露出一个仍然压暗的背景。 */
+.c-dialog-scrim[data-state="closing"] {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-1) var(--ease-out);
+}
+
+/* 面板往「屏幕里」退一点：缩放 + 下移比单纯淡出更像一层玻璃被收走 */
+.c-dialog-scrim[data-state="closing"] .c-dialog {
+  transform: translateY(6px) scale(0.985);
+  transition: transform var(--dur-1) var(--ease-out);
+}
+
+/* 减动效：过渡归零（Rust 侧仍等 EXIT_MS，见 overlay.rs 的注释） */
+@media (prefers-reduced-motion: reduce) {
+  .c-popover[data-state="closing"],
+  .c-dialog-scrim[data-state="closing"],
+  .c-dialog-scrim[data-state="closing"] .c-dialog {
+    transition-duration: 0s;
+  }
+}
+
 
 /* ===== components/38-tooltip.css ===== */
 /* ==========================================================================
@@ -5882,6 +5942,28 @@ html[data-focused="0"] .c-nav__item[aria-selected="true"] .c-nav__icon {
 }
 
 
+/* ---- 退场（2026-11 增补）----
+   抽屉的位移由 `--dw-p` 与拖拽过渡管着（--dur-3 = 320ms，长于 EXIT_MS），
+   所以退场不再动位移：整块容器淡出 --dur-1（120ms ≤ overlay.rs 的 EXIT_MS 140ms）。
+   淡出期间 `pointer-events` 全关：`data-open` 已经掉了，遮罩不再吃点击，
+   但面板自己还挂着 auto，不显式关掉就会在最后 140ms 里继续吞掉一次点击。 */
+.c-drawer[data-state="closing"] {
+  opacity: 0;
+  transition: opacity var(--dur-1) var(--ease-out);
+}
+
+.c-drawer[data-state="closing"] .c-drawer__scrim,
+.c-drawer[data-state="closing"] .c-drawer__sheet {
+  pointer-events: none;
+}
+
+/* 减动效：过渡归零（Rust 侧仍等 EXIT_MS） */
+@media (prefers-reduced-motion: reduce) {
+  .c-drawer[data-state="closing"] {
+    transition-duration: 0s;
+  }
+}
+
 
 /* ===== components/43-resizer.css ===== */
 /* ==========================================================================
@@ -6393,6 +6475,39 @@ html[data-resizing] {
 
 .c-collection[data-virtual="1"] .c-collection__pad[data-rows="0"] {
   display: none;
+}
+
+/* --------------------------------------------------------------------------
+   变高行（P4 追加）
+   —— `data-varheight="1"` 只在「列表 + max_height + virtual_var_height」时出现。
+      行高由内容决定、实测后写回 Rust 的前缀和，所以几何不可能再写成
+      「行数 × 行距」：撑高行的高度由 Rust 以像素给（--pad-h），这里只负责
+      「收下这个像素值」和「0 就不占位」。
+   -------------------------------------------------------------------------- */
+
+/* 撑高行吃 Rust 给的像素高度（前缀和）。上撑高行已经把身后那个 gap 减掉了。 */
+.c-collection[data-virtual="1"][data-varheight="1"] .c-collection__pad {
+  height: var(--pad-h, 0px);
+}
+
+/* 0 高度必须整块不渲染：仍然留一个盒子的话，grid 会为它多算一个 gap，
+   底部就会多出一条 4px 缝（同一个坑在固定行高处踩过）。 */
+.c-collection[data-virtual="1"][data-varheight="1"] .c-collection__pad[data-pad="0"] {
+  display: none;
+}
+
+/* 变高的项不能钉死高度：钉成「行距 - gap」的话，量出来的永远是估计值，
+   校正永远不生效。改回内容高，下限沿用 --item-h（估计值）。 */
+.c-collection[data-virtual="1"][data-varheight="1"] .c-collection__item {
+  height: auto;
+  min-height: var(--item-h, 32px);
+  overflow: visible;
+}
+
+/* 变高的来源是「多行正文」，而 26-list 的 __subtitle 是 nowrap + 省略号。
+   只在变高模式下放开折行，其他列表的视觉一个像素都不动。 */
+.c-collection[data-varheight="1"] .c-list__subtitle {
+  white-space: normal;
 }
 
 
@@ -7208,6 +7323,29 @@ html[data-resizing] {
   }
 }
 
+/* ---- 退场（2026-11 增补）----
+   和 Dialog 同源：遮罩带 `data-state="closing"` 时整体淡出，面板同时微缩下移。
+   时长 --dur-1（120ms）必须 ≤ `base/overlay.rs` 的 EXIT_MS（140ms），
+   出栈（含 inert 解除与焦点归还）由那边的定时器在 EXIT_MS 后触发。 */
+.c-sheet-scrim[data-state="closing"] {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-1) var(--ease-out);
+}
+
+.c-sheet-scrim[data-state="closing"] .c-sheet {
+  transform: translateY(8px) scale(0.985);
+  transition: transform var(--dur-1) var(--ease-out);
+}
+
+/* 减动效：过渡归零（Rust 侧仍等 EXIT_MS） */
+@media (prefers-reduced-motion: reduce) {
+  .c-sheet-scrim[data-state="closing"],
+  .c-sheet-scrim[data-state="closing"] .c-sheet {
+    transition-duration: 0s;
+  }
+}
+
 
 /* ===== components/50-datetime.css ===== */
 /* ==========================================================================
@@ -7686,6 +7824,117 @@ html[data-resizing] {
   .c-datepicker__toggle,
   .c-timepicker,
   .c-timepicker__seg {
+    transition: none;
+  }
+}
+
+/* ==========================================================================
+   追加：日期区间 / 时间区间 / TimePicker 网格
+   本节只补上面没有的三个形态，既有规则一条未改（红线 6）。
+   ========================================================================== */
+
+/* 区间中段连成一条淡强调带：端点仍走 [aria-selected] 的实心强调色，
+   靠「实心 vs 半透明」区分端点与段内，不必再加第二种颜色。 */
+.c-datepicker__day[data-in-range="true"] {
+  background: var(--accent-soft);
+}
+
+/* 悬停预览用内描边而不是实心：它还没提交，视觉上必须比已选轻一档，
+   否则用户会以为第二次点击已经发生。 */
+.c-datepicker__day[data-preview="true"] {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent-ring);
+}
+
+/* —— 时间区间 ——
+   两个端点共用 .c-timepicker，中间只借一个破折号：箭头会暗示「方向」，
+   而跨零点时起止的大小关系本来就不固定。 */
+.c-timerange {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  max-width: 100%;
+}
+
+.c-timerange__sep {
+  flex: none;
+  color: var(--text-tertiary);
+  font-size: var(--fs-12);
+}
+
+/* 跨零点是提醒不是错误：用次要色，不能用 --danger 吓人 */
+.c-timerange__note {
+  flex: none;
+  font-size: var(--fs-11);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+/* —— TimePicker 网格 ——
+   外层从「一行高 28 的数字段」变成三列按钮盒，所以高度与内边距都要放开；
+   对齐用 stretch，让三列等高、各自的滚动条一样长。 */
+.c-timepicker--grid {
+  align-items: stretch;
+  height: auto;
+  padding: var(--s-2);
+}
+
+/* 每列自己滚：改小时时不该把分钟列滚走，三列共用一块滚动区就会互相干扰。
+   高度上限对齐 6 格（6 × 22 + 5 × 1），与 PageUp/PageDown 的一屏同一量级。 */
+.c-timepicker__col {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 34px;
+  max-height: 138px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* 格宽撑满列：数字宽度一致（tabular-nums），点哪里都整行可点 */
+.c-timepicker__cell {
+  flex: none;
+  width: 100%;
+  height: 22px;
+  padding: 0 var(--s-2);
+  border-radius: var(--r-xs);
+  font-size: var(--fs-12);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  transition: background-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out);
+}
+
+.c-timepicker__cell:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+/* 选中格用实心强调色：与段式的「淡强调底表示当前编辑段」区分开，
+   网格里没有「正在编辑」，只有「已选定」。 */
+.c-timepicker__cell[aria-selected="true"] {
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-weight: 600;
+}
+
+.c-timepicker__cell[aria-selected="true"]:hover {
+  background: var(--accent-hover);
+}
+
+.c-timepicker__cell:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 0;
+}
+
+/* 强调底上叠蓝环等于没有，换浅色描边 */
+.c-timepicker__cell[aria-selected="true"]:focus-visible {
+  outline-color: var(--line-highlight);
+}
+
+/* 网格格也是按钮，动效开关要和上面那批保持一致（上面的媒体查询已成型，另起一段） */
+@media (prefers-reduced-motion: reduce) {
+  .c-timepicker__cell {
     transition: none;
   }
 }
@@ -8307,6 +8556,74 @@ html[data-resizing] {
 .c-datatable__th:focus-visible {
   outline: 2px solid var(--accent-ring);
   outline-offset: -2px;
+}
+
+/* ==========================================================================
+   行内编辑 / 行焦点（P4 追加）
+   —— 全部追加在上面的度量之后，一个字都没改。这里只有一条硬约束：
+      编辑态**不许改变行高**。虚拟化的窗口数学是「start × --dt-row-h」，
+      行高一变，撑高行与实际 DOM 位置立刻错位（红线 5）。
+      做法：输入框与错误气泡都绝对定位，完全不参与行内排版。
+   ========================================================================== */
+
+/* 已有规则把编辑格设成 overflow: visible（让焦点环画到格外），但没给定位上下文；
+   绝对定位的子元素需要一个 position: relative 的祖先，否则会以滚动容器为基准。 */
+.c-datatable__cell[data-editing="1"] {
+  position: relative;
+}
+
+/* 输入框压在单元格内部：top/left/right + 显式 height 都从 --dt-row-h 算，
+   所以它既不撑高行，也不会因为内容多少变成另一个高度。
+   高度写死是必须的 —— input 是替换元素，只给 top/bottom 时 height 仍取固有高度。 */
+.c-datatable__editor {
+  position: absolute;
+  top: 1px;
+  right: 2px;
+  left: 2px;
+  height: calc(var(--dt-row-h) - 2px);
+  box-sizing: border-box;
+  padding: 0 var(--s-2);
+  border: 0;
+  border-radius: var(--r-xs);
+  background: var(--surface-control-solid);
+  box-shadow: inset 0 0 0 0.5px var(--line-strong), 0 0 0 3px var(--accent-ring);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--fs-12);
+  /* 焦点环由上面那圈 accent-ring 统一提供，输入元素自己不再画第二圈 */
+  outline: none;
+}
+
+/* 校验失败的提示：同样绝对定位（top: 100%），只向下压住下一行、不占本行高度。
+   pointer-events: none —— 气泡不该抢走本格或相邻格的点击。 */
+.c-datatable__cell-error {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 4;
+  margin-top: var(--s-1);
+  padding: 0 var(--s-2);
+  border-radius: var(--r-xs);
+  background: var(--danger-soft);
+  box-shadow: inset 0 0 0 0.5px var(--danger);
+  color: var(--text-primary);
+  font-size: var(--fs-11);
+  line-height: 16px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* 行是 roving tabindex 的落点（全表只有一个 tabindex="0"）：
+   没有这条，键盘用户按 Tab 进表后看不出自己在哪一行。
+   outline-offset 取负值，环画在行内侧，不会被相邻行盖住。 */
+.c-datatable__row:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: -2px;
+}
+
+/* 只读格不该有「可以点进去改」的暗示：光标保持箭头，与可选行的文字光标区分开 */
+.c-datatable__cell[aria-readonly="false"] {
+  cursor: text;
 }
 
 

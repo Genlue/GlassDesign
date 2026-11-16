@@ -128,3 +128,26 @@
   overscroll-behavior: contain;
 }
 
+
+/* ---- 退场（2026-11 增补）----
+   关闭时面板要先留在屏幕上播一段过渡：同一帧 `display:none` 会被眼睛读成闪断。
+   时长取 --dur-1（120ms），必须 ≤ `base/overlay.rs` 的 EXIT_MS（140ms）——
+   Rust 只管等 140ms 之后出栈，CSS 慢过它就会被硬切。
+   `pointer-events:none`：正在淡出的菜单不能再吃掉导致关闭的那次点击，
+   否则「点外面 → 菜单关掉 → 点击落空」看起来像点了个寂寞。 */
+.c-menu[data-state="closing"] {
+  opacity: 0;
+  transform: translateY(-2px) scale(0.99);
+  pointer-events: none;
+  transition:
+    opacity var(--dur-1) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
+}
+
+/* 减动效：过渡直接归零。Rust 侧仍等 EXIT_MS（不读 media query，理由见 overlay.rs），
+   代价只是面板多留 140ms 不可见 —— 比提前出栈、动画还在播安全。 */
+@media (prefers-reduced-motion: reduce) {
+  .c-menu[data-state="closing"] {
+    transition-duration: 0s;
+  }
+}

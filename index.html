@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!-- 静态视觉快照：由 应用/ui 的 DOM 导出，不含 WASM 交互。
      重新生成：node scripts/build-static.mjs（需 8777 端口在跑） -->
-<html lang="zh-CN" data-theme="dark" data-gd-version="0.6.0" data-theme-mode="system" style="--lg: 1; --shadow-k: 1; --ic-stroke: 1.4; --accent: rgb(25 139 255); --accent-hover: rgb(49 152 255); --accent-soft: rgb(10 132 255 / 0.22); --accent-ring: rgb(10 132 255 / 0.48); --accent-rgb: 10 132 255; --text-on-accent: #ffffff;"><head>
+<html lang="zh-CN" data-theme="dark" data-gd-version="0.7.0" data-theme-mode="system" style="--lg: 1; --shadow-k: 1; --ic-stroke: 1.4; --accent: rgb(25 139 255); --accent-hover: rgb(49 152 255); --accent-soft: rgb(10 132 255 / 0.22); --accent-ring: rgb(10 132 255 / 0.48); --accent-rgb: 10 132 255; --text-on-accent: #ffffff;"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:,">
@@ -1121,7 +1121,7 @@ img {
    margin 会把主区推离窗口边，主区背景就停在那里 —— 左边露出一条壁纸缝，
    读起来是「一根窄侧栏」，悬浮感全没了（这是踩过的坑）。
    padding 让背景继续铺到窗口边，药丸才是「浮在内容上」。
-   收起后（[data-hidden="1"]）不再让位，和侧边栏收起时同一个行为。 */
+   收起后（[data-hidden="1"]）不再让位，和侧边栏收起时同���个行为。 */
 .l-app:has(> .c-dock[data-hidden="0"][data-edge="left"]) .l-stage {
   padding-left: var(--dock-gutter);
 }
@@ -2977,6 +2977,29 @@ html[data-focused="0"] .c-nav__item[aria-selected="true"] .c-nav__icon {
   overscroll-behavior: contain;
 }
 
+
+/* ---- 退场（2026-11 增补）----
+   关闭时面板要先留在屏幕上播一段过渡：同一帧 `display:none` 会被眼睛读成闪断。
+   时长取 --dur-1（120ms），必须 ≤ `base/overlay.rs` 的 EXIT_MS（140ms）——
+   Rust 只管等 140ms 之后出栈，CSS 慢过它就会被硬切。
+   `pointer-events:none`：正在淡出的菜单不能再吃掉导致关闭的那次点击，
+   否则「点外面 → 菜单关掉 → 点击落空」看起来像点了个寂寞。 */
+.c-menu[data-state="closing"] {
+  opacity: 0;
+  transform: translateY(-2px) scale(0.99);
+  pointer-events: none;
+  transition:
+    opacity var(--dur-1) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
+}
+
+/* 减动效：过渡直接归零。Rust 侧仍等 EXIT_MS（不读 media query，理由见 overlay.rs），
+   代价只是面板多留 140ms 不可见 —— 比提前出栈、动画还在播安全。 */
+@media (prefers-reduced-motion: reduce) {
+  .c-menu[data-state="closing"] {
+    transition-duration: 0s;
+  }
+}
 
 
 /* ===== components/14-toast.css ===== */
@@ -5036,6 +5059,43 @@ html[data-focused="0"] .c-nav__item[aria-selected="true"] .c-nav__icon {
   will-change: transform, opacity;
 }
 
+
+/* ---- 退场（2026-11 增补）----
+   气泡与模态共用同一套时序：面板在 `open=false` 之后仍留在屏幕上 140ms
+   （`base/overlay.rs` 的 EXIT_MS），过渡取 --dur-1 = 120ms，必须 ≤ EXIT_MS。
+   `pointer-events:none` 让正在淡出的那一层不再拦点击：点外关闭时，
+   这一次点击本来就该落到别处。 */
+.c-popover[data-state="closing"] {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.99);
+  pointer-events: none;
+  transition:
+    opacity var(--dur-1) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
+}
+
+/* 模态的退场挂在遮罩上：面板是它的子节点，一个属性同时驱动两层 ——
+   只写面板会在遮罩消失的那一帧露出一个仍然压暗的背景。 */
+.c-dialog-scrim[data-state="closing"] {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-1) var(--ease-out);
+}
+
+/* 面板往「屏幕里」退一点：缩放 + 下移比单纯淡出更像一层玻璃被收走 */
+.c-dialog-scrim[data-state="closing"] .c-dialog {
+  transform: translateY(6px) scale(0.985);
+  transition: transform var(--dur-1) var(--ease-out);
+}
+
+/* 减动效：过渡归零（Rust 侧仍等 EXIT_MS，见 overlay.rs 的注释） */
+@media (prefers-reduced-motion: reduce) {
+  .c-popover[data-state="closing"],
+  .c-dialog-scrim[data-state="closing"],
+  .c-dialog-scrim[data-state="closing"] .c-dialog {
+    transition-duration: 0s;
+  }
+}
 
 
 /* ===== components/38-tooltip.css ===== */
@@ -5893,6 +5953,28 @@ html[data-focused="0"] .c-nav__item[aria-selected="true"] .c-nav__icon {
   padding-top: var(--s-7);
 }
 
+
+/* ---- 退场（2026-11 增补）----
+   抽屉的位移由 `--dw-p` 与拖拽过渡管着（--dur-3 = 320ms，长于 EXIT_MS），
+   所以退场不再动位移：整块容器淡出 --dur-1（120ms ≤ overlay.rs 的 EXIT_MS 140ms）。
+   淡出期间 `pointer-events` 全关：`data-open` 已经掉了，遮罩不再吃点击，
+   但面板自己还挂着 auto，不显式关掉就会在最后 140ms 里继续吞掉一次点击。 */
+.c-drawer[data-state="closing"] {
+  opacity: 0;
+  transition: opacity var(--dur-1) var(--ease-out);
+}
+
+.c-drawer[data-state="closing"] .c-drawer__scrim,
+.c-drawer[data-state="closing"] .c-drawer__sheet {
+  pointer-events: none;
+}
+
+/* 减动效：过渡归零（Rust 侧仍等 EXIT_MS） */
+@media (prefers-reduced-motion: reduce) {
+  .c-drawer[data-state="closing"] {
+    transition-duration: 0s;
+  }
+}
 
 
 /* ===== components/43-resizer.css ===== */
@@ -6405,6 +6487,39 @@ html[data-resizing] {
 
 .c-collection[data-virtual="1"] .c-collection__pad[data-rows="0"] {
   display: none;
+}
+
+/* --------------------------------------------------------------------------
+   变高行（P4 追加）
+   —— `data-varheight="1"` 只在「列表 + max_height + virtual_var_height」时出现。
+      行高由内容决定、实测后写回 Rust 的前缀和，所以几何不可能再写成
+      「行数 × 行距」：撑高行的高度由 Rust 以像素给（--pad-h），这里只负责
+      「收下这个像素值」和「0 就不占位」。
+   -------------------------------------------------------------------------- */
+
+/* 撑高行吃 Rust 给的像素高度（前缀和）。上撑高行已经把身后那个 gap 减掉了。 */
+.c-collection[data-virtual="1"][data-varheight="1"] .c-collection__pad {
+  height: var(--pad-h, 0px);
+}
+
+/* 0 高度必须整块不渲染：仍然留一个盒子的话，grid 会为它多算一个 gap，
+   底部就会多出一条 4px 缝（同一个坑在固定行高处踩过）。 */
+.c-collection[data-virtual="1"][data-varheight="1"] .c-collection__pad[data-pad="0"] {
+  display: none;
+}
+
+/* 变高的项不能钉死高度：钉成「行距 - gap」的话，量出来的永远是估计值，
+   校正永远不生效。改回内容高，下限沿用 --item-h（估计值）。 */
+.c-collection[data-virtual="1"][data-varheight="1"] .c-collection__item {
+  height: auto;
+  min-height: var(--item-h, 32px);
+  overflow: visible;
+}
+
+/* 变高的来源是「多行正文」，而 26-list 的 __subtitle 是 nowrap + 省略号。
+   只在变高模式下放开折行，其他列表的视觉一个像素都不动。 */
+.c-collection[data-varheight="1"] .c-list__subtitle {
+  white-space: normal;
 }
 
 
@@ -7219,6 +7334,29 @@ html[data-resizing] {
     transition-duration: 1ms;
   }
 }
+
+/* ---- 退场（2026-11 增补）----
+   和 Dialog 同源：遮罩带 `data-state="closing"` 时整体淡出，面板同时微缩下移。
+   时长 --dur-1（120ms）必须 ≤ `base/overlay.rs` 的 EXIT_MS（140ms），
+   出栈（含 inert 解除与焦点归还）由那边的定时器在 EXIT_MS 后触发。 */
+.c-sheet-scrim[data-state="closing"] {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-1) var(--ease-out);
+}
+
+.c-sheet-scrim[data-state="closing"] .c-sheet {
+  transform: translateY(8px) scale(0.985);
+  transition: transform var(--dur-1) var(--ease-out);
+}
+
+/* 减动效：过渡归零（Rust 侧仍等 EXIT_MS） */
+@media (prefers-reduced-motion: reduce) {
+  .c-sheet-scrim[data-state="closing"],
+  .c-sheet-scrim[data-state="closing"] .c-sheet {
+    transition-duration: 0s;
+  }
+}
 
 
 /* ===== components/50-datetime.css ===== */
@@ -7701,6 +7839,117 @@ html[data-resizing] {
     transition: none;
   }
 }
+
+/* ==========================================================================
+   追加：日期区间 / 时间区间 / TimePicker 网格
+   本节只补上面没有的三个形态，既有规则一条未改（红线 6）。
+   ========================================================================== */
+
+/* 区间中段连成一条淡强调带：端点仍走 [aria-selected] 的实心强调色，
+   靠「实心 vs 半透明」区分端点与段内，不必再加第二种颜色。 */
+.c-datepicker__day[data-in-range="true"] {
+  background: var(--accent-soft);
+}
+
+/* 悬停预览用内描边而不是实心：它还没提交，视觉上必须比已选轻一档，
+   否则用户会以为第二次点击已经发生。 */
+.c-datepicker__day[data-preview="true"] {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent-ring);
+}
+
+/* —— 时间区间 ——
+   两个端点共用 .c-timepicker，中间只借一个破折号：箭头会暗示「方向」，
+   而跨零点时起止的大小关系本来就不固定。 */
+.c-timerange {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  max-width: 100%;
+}
+
+.c-timerange__sep {
+  flex: none;
+  color: var(--text-tertiary);
+  font-size: var(--fs-12);
+}
+
+/* 跨零点是提醒不是错误：用次要色，不能用 --danger 吓人 */
+.c-timerange__note {
+  flex: none;
+  font-size: var(--fs-11);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+/* —— TimePicker 网格 ——
+   外层从「一行高 28 的数字段」变成三列按钮盒，所以高度与内边距都要放开；
+   对齐用 stretch，让三列等高、各自的滚动条一样长。 */
+.c-timepicker--grid {
+  align-items: stretch;
+  height: auto;
+  padding: var(--s-2);
+}
+
+/* 每列自己滚：改小时时不该把分钟列滚走，三列共用一块滚动区就会互相干扰。
+   高度上限对齐 6 格（6 × 22 + 5 × 1），与 PageUp/PageDown 的一屏同一量级。 */
+.c-timepicker__col {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 34px;
+  max-height: 138px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* 格宽撑满列：数字宽度一致（tabular-nums），点哪里都整行可点 */
+.c-timepicker__cell {
+  flex: none;
+  width: 100%;
+  height: 22px;
+  padding: 0 var(--s-2);
+  border-radius: var(--r-xs);
+  font-size: var(--fs-12);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  transition: background-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out);
+}
+
+.c-timepicker__cell:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+/* 选中格用实心强调色：与段式的「淡强调底表示当前编辑段」区分开，
+   网格里没有「正在编辑」，只有「已选定」。 */
+.c-timepicker__cell[aria-selected="true"] {
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-weight: 600;
+}
+
+.c-timepicker__cell[aria-selected="true"]:hover {
+  background: var(--accent-hover);
+}
+
+.c-timepicker__cell:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 0;
+}
+
+/* 强调底上叠蓝环等于没有，换浅色描边 */
+.c-timepicker__cell[aria-selected="true"]:focus-visible {
+  outline-color: var(--line-highlight);
+}
+
+/* 网格格也是按钮，动效开关要和上面那批保持一致（上面的媒体查询已成型，另起一段） */
+@media (prefers-reduced-motion: reduce) {
+  .c-timepicker__cell {
+    transition: none;
+  }
+}
 
 
 /* ===== components/51-file.css ===== */
@@ -7898,7 +8147,7 @@ html[data-resizing] {
   line-height: var(--lh-snug);
 }
 
-/* 多文件时错误会合并成一句，允许换行，别用省��号把后半句吃掉 */
+/* 多文件时错误会合并成一句，允许换行，别用省略号把后半句吃掉 */
 .c-dropzone__error {
   max-width: 48ch;
 }
@@ -8319,6 +8568,74 @@ html[data-resizing] {
 .c-datatable__th:focus-visible {
   outline: 2px solid var(--accent-ring);
   outline-offset: -2px;
+}
+
+/* ==========================================================================
+   行内编辑 / 行焦点（P4 追加）
+   —— 全部追加在上面的度量之后，一个字都没改。这里只有一条硬约束：
+      编辑态**不许改变行高**。虚拟化的窗口数学是「start × --dt-row-h」，
+      行高一变，撑高行与实际 DOM 位置立刻错位（红线 5）。
+      做法：输入框与错误气泡都绝对定位，完全不参与行内排版。
+   ========================================================================== */
+
+/* 已有规则把编辑格设成 overflow: visible（让焦点环画到格外），但没给定位上下文；
+   绝对定位的子元素需要一个 position: relative 的祖先，否则会以滚动容器为基准。 */
+.c-datatable__cell[data-editing="1"] {
+  position: relative;
+}
+
+/* 输入框压在单元格内部：top/left/right + 显式 height 都从 --dt-row-h 算，
+   所以它既不撑高行，也不会因为内容多少变成另一个高度。
+   高度写死是必须的 —— input 是替换元素，只给 top/bottom 时 height 仍取固有高度。 */
+.c-datatable__editor {
+  position: absolute;
+  top: 1px;
+  right: 2px;
+  left: 2px;
+  height: calc(var(--dt-row-h) - 2px);
+  box-sizing: border-box;
+  padding: 0 var(--s-2);
+  border: 0;
+  border-radius: var(--r-xs);
+  background: var(--surface-control-solid);
+  box-shadow: inset 0 0 0 0.5px var(--line-strong), 0 0 0 3px var(--accent-ring);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--fs-12);
+  /* 焦点环由上面那圈 accent-ring 统一提供，输入元素自己不再画第二圈 */
+  outline: none;
+}
+
+/* 校验失败的提示：同样绝对定位（top: 100%），只向下压住下一行、不占本行高度。
+   pointer-events: none —— 气泡不该抢走本格或相邻格的点击。 */
+.c-datatable__cell-error {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 4;
+  margin-top: var(--s-1);
+  padding: 0 var(--s-2);
+  border-radius: var(--r-xs);
+  background: var(--danger-soft);
+  box-shadow: inset 0 0 0 0.5px var(--danger);
+  color: var(--text-primary);
+  font-size: var(--fs-11);
+  line-height: 16px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* 行是 roving tabindex 的落点（全表只有一个 tabindex="0"）：
+   没有这条，键盘用户按 Tab 进表后看不出自己在哪一行。
+   outline-offset 取负值，环画在行内侧，不会被相邻行盖住。 */
+.c-datatable__row:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: -2px;
+}
+
+/* 只读格不该有「可以点进去改」的暗示：光标保持箭头，与可选行的文字光标区分开 */
+.c-datatable__cell[aria-readonly="false"] {
+  cursor: text;
 }
 
 
@@ -11070,4 +11387,4 @@ html[data-resizing] {
 </filter>
 </defs>
 </svg>
-</div><div class="l-app"><div class="c-topbar" data-tauri-drag-region="true"><div class="c-topbar__lead" data-no-drag="true"><div style="min-width:0" class="l-row l-row--3"><span class="c-title">GlassDesign</span><span class="c-subtitle">Rust 控件库 · v0.6.0</span></div></div><div class="c-topbar__pills" data-no-drag="true"><div class="c-capsule c-capsule--round" data-glass="capsule"><button class="c-iconbtn" type="button" title="切换明暗" aria-label="切换明暗"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path><!----></svg></button></div></div></div><aside class="l-nav c-pane" aria-label="导航栏"><div class="l-nav__head"></div><div class="l-nav__body"><div class="c-nav" role="listbox"><div class="c-nav__section" role="presentation">控件</div><div class="c-nav__item" role="option" aria-selected="true" tabindex="0" title="基础"><span class="c-nav__icon"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="3" width="8" height="8" rx="1"></rect><rect x="13" y="3" width="8" height="8" rx="1"></rect><rect x="3" y="13" width="8" height="8" rx="1"></rect><rect x="13" y="13" width="8" height="8" rx="1"></rect><!----></svg></span><span class="c-nav__label">基础</span><!----><!----></div><div class="c-nav__item" role="option" aria-selected="false" tabindex="0" title="表单"><span class="c-nav__icon"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 4h-7"></path><path d="M10 4H3"></path><path d="M21 12h-9"></path><path d="M8 12H3"></path><path d="M21 20h-5"></path><path d="M12 20H3"></path><path d="M14 2v4"></path><path d="M8 10v4"></path><path d="M16 18v4"></path><!----></svg></span><span class="c-nav__label">表单</span><!----><!----></div><div class="c-nav__item" role="option" aria-selected="false" tabindex="0" title="外观"><span class="c-nav__icon"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 22a10 10 0 1 0-8.5-4.7A2 2 0 0 0 5 22z"></path><path d="M8 13h.01"></path><path d="M12 11h.01"></path><path d="M16 13h.01"></path><path d="M15 7h.01"></path><!----></svg></span><span class="c-nav__label">外观</span><!----><!----></div><div class="c-nav__item" role="option" aria-selected="false" tabindex="0" title="数据"><span class="c-nav__icon"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3v18"></path><path d="M3 12h18"></path><rect x="3" y="3" width="18" height="18" rx="2"></rect><!----></svg></span><span class="c-nav__label">数据</span><!----><!----></div><div class="c-nav__item" role="option" aria-selected="false" tabindex="0" title="导航"><span class="c-nav__icon"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"></circle><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"></path><!----></svg></span><span class="c-nav__label">导航</span><!----><!----></div><div class="c-nav__item" role="option" aria-selected="false" tabindex="0" title="面板"><span class="c-nav__icon"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="18" height="18" x="3" y="3" rx="3"></rect><path d="M15 3v18"></path><!----></svg></span><span class="c-nav__label">面板</span><!----><!----></div><div class="c-nav__item" role="option" aria-selected="false" tabindex="0" title="工具栏"><span class="c-nav__icon"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 3a2 2 0 0 0-2 2"></path><path d="M19 3a2 2 0 0 1 2 2"></path><path d="M21 19a2 2 0 0 1-2 2"></path><path d="M5 21a2 2 0 0 1-2-2"></path><path d="M9 3h1"></path><path d="M9 21h1"></path><path d="M14 3h1"></path><path d="M14 21h1"></path><path d="M3 9v1"></path><path d="M21 9v1"></path><path d="M3 14v1"></path><path d="M21 14v1"></path><!----></svg></span><span class="c-nav__label">工具栏</span><!----><!----></div><div class="c-nav__item" role="option" aria-selected="false" tabindex="0" title="浮层"><span class="c-nav__icon"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"></path><path d="m22 12.18-9.17 4.16a2 2 0 0 1-1.66 0L2 12.18"></path><path d="m22 17.18-9.17 4.16a2 2 0 0 1-1.66 0L2 17.18"></path><!----></svg></span><span class="c-nav__label">浮层</span><!----><!----></div></div></div><div class="c-topveil c-topveil--nav" data-on="0"></div></aside><div class="l-main"><div class="l-stage"><div style="padding:24px 32px 64px" class="l-scroll"><div class="l-stack l-stack--6"><div class="l-stack l-stack--2"><h1 class="c-headline">基础控件</h1><p class="c-subtitle" style="white-space:normal">按钮、状态、进度、折叠。全部由 Rust 组件拼装。</p></div><div class="l-stack l-stack--3"><div class="c-section">材质</div><section class="c-card"><div style="position:relative;height:190px;border-radius:18px;overflow:hidden;background:linear-gradient(115deg,#ff9a62 0%,#ff5f8f 34%,#7b61ff 68%,#2ec5ce 100%)"><div style="position:absolute;inset:0;background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.20) 0 2px,transparent 2px 28px)"></div><div style="position:absolute;left:26px;top:24px;color:#fff;font-size:12px;letter-spacing:.04em;opacity:.9">静态 SVG filter · 无 JavaScript</div><div style="position:absolute;left:26px;bottom:26px;display:flex;align-items:center;gap:14px"><div class="c-capsule" data-size="180" data-glass="capsule"><span style="font-size:13px;font-weight:500;color:#fff">Liquid Glass</span></div><span style="color:#fff;font-size:12px;opacity:.78">位移 + 高光贴图在构建期算好</span></div></div></section></div><div class="l-stack l-stack--3"><div class="c-section">按钮</div><section class="c-card"><div class="l-pad l-stack l-stack--4"><div class="c-row"><div class="c-row__label">变体<span class="c-row__hint">主操作只放一个</span></div><div class="c-row__control"><div class="l-row l-row--3"><button class="c-btn" type="button"><!----><span class="c-btn__label">默认</span></button><button class="c-btn c-btn--primary" type="button"><!----><span class="c-btn__label">主要</span></button><button class="c-btn c-btn--tonal" type="button"><!----><span class="c-btn__label">柔和</span></button><button class="c-btn c-btn--danger" type="button"><!----><span class="c-btn__label">危险</span></button></div></div></div><div class="c-row"><div class="c-row__label">带图标<!----></div><div class="c-row__control"><div class="l-row l-row--3"><button class="c-btn c-btn--primary" type="button"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 10v6"></path><path d="M9 13h6"></path><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path><!----></svg><span class="c-btn__label">新建</span></button><button class="c-iconbtn" type="button" title="刷新" aria-label="刷新"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M8 16H3v5"></path><!----></svg></button><button class="c-iconbtn c-iconbtn--tonal" type="button" title="删除" aria-label="删除"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><!----></svg></button></div></div></div><div class="c-row"><div class="c-row__label">禁用<!----></div><div class="c-row__control"><button class="c-btn" type="button" disabled=""><!----><span class="c-btn__label">不可用</span></button></div></div></div></section></div><div class="l-stack l-stack--3"><div class="c-section">标签与头像</div><section class="c-card"><div class="l-pad l-stack l-stack--4"><div class="c-row"><div class="c-row__label">徽标<!----></div><div class="c-row__control"><div class="l-row l-row--3"><span class="c-badge"><!---->默认</span><span class="c-badge c-badge--accent"><!---->强调</span><span class="c-badge c-badge--danger"><!---->危险</span></div></div></div><div class="c-row"><div class="c-row__label">胶囊<!----></div><div class="c-row__control"><div class="l-row l-row--3"><div class="c-chip c-chip--interactive" aria-pressed="true"><button class="c-chip__label" type="button" aria-pressed="true"><svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"></path><path d="m22 12.18-9.17 4.16a2 2 0 0 1-1.66 0L2 12.18"></path><path d="m22 17.18-9.17 4.16a2 2 0 0 1-1.66 0L2 17.18"></path><!----></svg>Design</button><!----></div><div class="c-chip c-chip--interactive" aria-pressed="false"><span class="c-chip__label"><!---->可移除</span><button class="c-chip__x" type="button" aria-label="移除 可移除" title="移除 可移除"><svg class="ic" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path><!----></svg></button></div><div class="c-chip" aria-pressed="false"><span class="c-chip__label"><!---->纯展示</span><!----></div></div></div></div><div class="c-row"><div class="c-row__label">头像<!----></div><div class="c-row__control"><div style="align-items:center" class="l-row l-row--3"><span class="c-avatar c-avatar--sm" title="李明" aria-label="李明">李<span class="c-avatar__status c-avatar__status--online"><!----></span></span><span class="c-avatar c-avatar--lg" title="Ada Lovelace" aria-label="Ada Lovelace">AL<span class="c-avatar__status c-avatar__status--busy"><!----></span></span><span class="c-avatar c-avatar--square" title="Glass Design" aria-label="Glass Design">GD<!----></span></div></div></div></div></section></div><div class="l-stack l-stack--3"><div class="c-section">进度与占位</div><section class="c-card"><div class="l-pad l-stack l-stack--4"><div class="c-row"><div class="c-row__label">环形进度<!----></div><div class="c-row__control"><div style="align-items:center" class="l-row l-row--4"><svg style="--v:0.72" class="c-ring" viewBox="0 0 36 36" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="72" aria-label="完成度"><g><circle class="c-ring__track" cx="18" cy="18" r="15.9155"></circle></g><g><circle class="c-ring__bar" cx="18" cy="18" r="15.9155"></circle></g></svg><svg style="--v:0.38" class="c-ring c-ring--lg" viewBox="0 0 36 36" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="38" aria-label="完成度"><g><circle class="c-ring__track" cx="18" cy="18" r="15.9155"></circle></g><g><circle class="c-ring__bar" cx="18" cy="18" r="15.9155"></circle></g></svg></div></div></div><div class="c-row"><div class="c-row__label">进度条<!----></div><div class="c-row__control"><div style="width:320px"><div class="c-progress" role="progressbar" aria-label="上传" aria-valuemin="0" aria-valuemax="100" aria-valuenow="42"><div style="width:42%" class="c-progress__bar"><!----></div></div></div></div></div><div class="c-row"><div class="c-row__label">加载<!----></div><div class="c-row__control"><div style="align-items:center" class="l-row l-row--3"><span class="c-spinner" role="status" aria-label="加载中"><!----></span><div style="width:180px;height:12px" class="c-skeleton c-skeleton--text"><!----></div></div></div></div><div class="c-row"><div class="c-row__label">骨架屏<!----></div><div class="c-row__control"><div style="width:320px"><div style="width:100%" class="l-stack l-stack--3"><div style="width:100%;height:12px" class="c-skeleton c-skeleton--text"><!----></div><div style="width:100%;height:12px" class="c-skeleton c-skeleton--text"><!----></div><div style="width:62%;height:12px" class="c-skeleton c-skeleton--text"><!----></div><!----></div></div></div></div><div class="c-row"><div class="c-row__label">空态<!----></div><div class="c-row__control"><div class="c-empty"><span class="c-empty__icon"><svg class="ic" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 3a2 2 0 0 0-2 2"></path><path d="M19 3a2 2 0 0 1 2 2"></path><path d="M21 19a2 2 0 0 1-2 2"></path><path d="M5 21a2 2 0 0 1-2-2"></path><path d="M9 3h1"></path><path d="M9 21h1"></path><path d="M14 3h1"></path><path d="M14 21h1"></path><path d="M3 9v1"></path><path d="M21 9v1"></path><path d="M3 14v1"></path><path d="M21 14v1"></path><!----></svg></span><div class="c-empty__title">没有内容</div><div class="c-empty__desc">换一个筛选条件试试。</div><!----></div></div></div></div></section></div><div class="l-stack l-stack--3"><div class="c-section">行内提示</div><section class="c-card"><div class="l-pad l-stack l-stack--4"><div class="c-inline c-inline--info" role="status" aria-live="polite"><span class="c-inline__icon" aria-hidden="true"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path><!----></svg></span><div class="c-inline__body"><div class="c-inline__title">已保存</div><div class="c-inline__desc">本地状态已更新。</div></div><!----></div><div class="c-inline c-inline--warning" role="status" aria-live="polite"><span class="c-inline__icon" aria-hidden="true"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path><!----></svg></span><div class="c-inline__body"><div class="c-inline__title">注意</div><div class="c-inline__desc">这个操作不能撤销。</div></div><!----></div><div class="c-inline c-inline--danger" role="alert"><span class="c-inline__icon" aria-hidden="true"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"></circle><path d="m15 9-6 6"></path><path d="m9 9 6 6"></path><!----></svg></span><div class="c-inline__body"><div class="c-inline__title">失败</div><div class="c-inline__desc">网络不可用，请稍后重试。</div></div><!----></div></div></section></div><div class="l-stack l-stack--3"><div class="c-section">折叠</div><section class="c-card"><div class="l-pad"><div class="c-disclosure" data-open="1"><button class="c-disclosure__head" type="button" id="gd-disclosure-1-head" aria-expanded="true" aria-controls="gd-disclosure-1"><span class="c-disclosure__chev"><svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 18 6-6-6-6"></path><!----></svg></span><span class="l-fill">高级选项</span><span class="c-disclosure__hint">展开查看</span></button><div class="c-disclosure__body" id="gd-disclosure-1" role="region" aria-labelledby="gd-disclosure-1-head" aria-hidden="false"><div class="c-disclosure__inner"><div class="c-disclosure__content"><div class="l-stack l-stack--3"><div class="c-row"><div class="c-row__label">缓存<!----></div><div class="c-row__control"><button class="c-switch" type="button" role="switch" aria-checked="true" aria-label=""><span class="c-switch__knob"></span></button></div></div><div class="c-row"><div class="c-row__label">自动更新<!----></div><div class="c-row__control"><button class="c-switch" type="button" role="switch" aria-checked="false" aria-label=""><span class="c-switch__knob"></span></button></div></div></div></div></div></div></div></div></section></div><!----><!----><div class="l-stack l-stack--3"><div class="c-section">玻璃尺寸档</div><section class="c-card"><div class="l-pad l-stack l-stack--4"><p class="c-subtitle">只有显式 data-glass 的元素才套用固定尺寸贴图；不写档位仍走 Auto 涂层（无折射）。</p><div style="position:relative;display:flex;flex-wrap:wrap;align-items:flex-start;gap:16px;padding:20px;border-radius:18px;overflow:hidden;background:linear-gradient(115deg,#ff9a62 0%,#ff5f8f 34%,#7b61ff 68%,#2ec5ce 100%)"><div style="position:absolute;inset:0;background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.18) 0 2px,transparent 2px 32px)"></div><div class="c-glass-panel" data-glass="panel-320x220"><div style="position:relative;padding:18px;color:#fff;font-size:12px;letter-spacing:.04em;opacity:.92">panel 320 × 220</div></div><div class="c-glass-panel" data-glass="panel-480x320"><div style="position:relative;padding:18px;color:#fff;font-size:12px;letter-spacing:.04em;opacity:.92">panel 480 × 320</div></div><div class="c-glass-panel" data-glass="panel-640x420"><div style="position:relative;padding:18px;color:#fff;font-size:12px;letter-spacing:.04em;opacity:.92">panel 640 × 420</div></div></div><div style="position:relative;padding:20px;border-radius:18px;overflow:hidden;background:linear-gradient(115deg,#2ec5ce 0%,#7b61ff 46%,#ff5f8f 100%)"><div style="position:absolute;inset:0;background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.16) 0 2px,transparent 2px 32px)"></div><div class="c-menu" data-glass="menu-240x280" role="menu" style="position:relative;left:0;top:0"><div class="c-menu__item" role="menuitem" tabindex="-1">新建文件</div><div class="c-menu__item" role="menuitem" tabindex="-1">新建文件夹</div><div class="c-menu__sep" role="separator"></div><div class="c-menu__item" role="menuitem" tabindex="-1">重命名</div><div class="c-menu__item" role="menuitem" tabindex="-1">复制链接</div><div class="c-menu__item" role="menuitem" tabindex="-1">在访达中显示</div><div class="c-menu__item" role="menuitem" tabindex="-1">移动到…</div><div class="c-menu__item" role="menuitem" tabindex="-1">导出为 PDF</div><div class="c-menu__sep" role="separator"></div><div class="c-menu__item c-menu__item--danger" role="menuitem" tabindex="-1">删除</div></div></div></div></section></div></div></div></div><div class="c-topveil"><!----></div></div><div style="z-index:4000" class="c-toast-host" role="status" aria-live="polite" data-layer-ignore=""><!----></div></div></body></html>
+</div><div class="l-app"><div class="c-topbar" data-tauri-drag-region="true"><div class="c-topbar__lead" data-no-drag="true"><div style="min-width:0" class="l-row l-row--3"><span class="c-title">GlassDesign</span><span class="c-subtitle">Rust 控件库 · v0.7.0</span></div></div><div class="c-topbar__pills" data-no-drag="true"><div class="c-capsule c-capsule--round" data-glass="capsule"><button class="c-iconbtn" type="button" title="切换明暗" aria-label="切换明暗"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path><!----></svg></button></div><div class="c-capsule c-capsule--round" data-glass="capsule"><div class="c-seg" role="radiogroup" data-value="zh"><button class="c-seg__opt" type="button" role="radio" data-value="zh" title="中文" aria-checked="true" tabindex="0"><!----><span class="c-seg__label">中</span></button><button class="c-seg__opt" type="button" role="radio" data-value="en" title="English" aria-checked="false" tabindex="-1"><!----><span class="c-seg__label">EN</span></button><!----></div></div></div></div><aside class="l-nav c-pane" aria-label="导航栏"><div class="l-nav__head"></div><div class="l-nav__body"><div class="c-nav" role="listbox"><div class="c-nav__section" role="presentation">控件</div><div class="c-nav__item" role="option" aria-selected="true" tabindex="0" title="基础"><span class="c-nav__icon"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="3" width="8" height="8" rx="1"></rect><rect x="13" y="3" width="8" height="8" rx="1"></rect><rect x="3" y="13" width="8" height="8" rx="1"></rect><rect x="13" y="13" width="8" height="8" rx="1"></rect><!----></svg></span><span class="c-nav__label">基础</span><!----><!----></div><div class="c-nav__item" role="option" aria-selected="false" tabindex="0" title="表单"><span class="c-nav__icon"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 4h-7"></path><path d="M10 4H3"></path><path d="M21 12h-9"></path><path d="M8 12H3"></path><path d="M21 20h-5"></path><path d="M12 20H3"></path><path d="M14 2v4"></path><path d="M8 10v4"></path><path d="M16 18v4"></path><!----></svg></span><span class="c-nav__label">表单</span><!----><!----></div><div class="c-nav__item" role="option" aria-selected="false" tabindex="0" title="外观"><span class="c-nav__icon"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 22a10 10 0 1 0-8.5-4.7A2 2 0 0 0 5 22z"></path><path d="M8 13h.01"></path><path d="M12 11h.01"></path><path d="M16 13h.01"></path><path d="M15 7h.01"></path><!----></svg></span><span class="c-nav__label">外观</span><!----><!----></div><div class="c-nav__item" role="option" aria-selected="false" tabindex="0" title="数据"><span class="c-nav__icon"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3v18"></path><path d="M3 12h18"></path><rect x="3" y="3" width="18" height="18" rx="2"></rect><!----></svg></span><span class="c-nav__label">数据</span><!----><!----></div><div class="c-nav__item" role="option" aria-selected="false" tabindex="0" title="导航"><span class="c-nav__icon"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"></circle><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"></path><!----></svg></span><span class="c-nav__label">导航</span><!----><!----></div><div class="c-nav__item" role="option" aria-selected="false" tabindex="0" title="面板"><span class="c-nav__icon"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="18" height="18" x="3" y="3" rx="3"></rect><path d="M15 3v18"></path><!----></svg></span><span class="c-nav__label">面板</span><!----><!----></div><div class="c-nav__item" role="option" aria-selected="false" tabindex="0" title="工具栏"><span class="c-nav__icon"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 3a2 2 0 0 0-2 2"></path><path d="M19 3a2 2 0 0 1 2 2"></path><path d="M21 19a2 2 0 0 1-2 2"></path><path d="M5 21a2 2 0 0 1-2-2"></path><path d="M9 3h1"></path><path d="M9 21h1"></path><path d="M14 3h1"></path><path d="M14 21h1"></path><path d="M3 9v1"></path><path d="M21 9v1"></path><path d="M3 14v1"></path><path d="M21 14v1"></path><!----></svg></span><span class="c-nav__label">工具栏</span><!----><!----></div><div class="c-nav__item" role="option" aria-selected="false" tabindex="0" title="浮层"><span class="c-nav__icon"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"></path><path d="m22 12.18-9.17 4.16a2 2 0 0 1-1.66 0L2 12.18"></path><path d="m22 17.18-9.17 4.16a2 2 0 0 1-1.66 0L2 17.18"></path><!----></svg></span><span class="c-nav__label">浮层</span><!----><!----></div></div></div><div class="c-topveil c-topveil--nav" data-on="0"></div></aside><div class="l-main"><div class="l-stage"><div style="padding:24px 32px 64px" class="l-scroll"><div class="l-stack l-stack--6"><div class="l-stack l-stack--2"><h1 class="c-headline">基础控件</h1><p class="c-subtitle" style="white-space:normal">按钮、状态、进度、折叠。全部由 Rust 组件拼装。</p></div><div class="l-stack l-stack--3"><div class="c-section">材质</div><section class="c-card"><div style="position:relative;height:190px;border-radius:18px;overflow:hidden;background:linear-gradient(115deg,#ff9a62 0%,#ff5f8f 34%,#7b61ff 68%,#2ec5ce 100%)"><div style="position:absolute;inset:0;background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.20) 0 2px,transparent 2px 28px)"></div><div style="position:absolute;left:26px;top:24px;color:#fff;font-size:12px;letter-spacing:.04em;opacity:.9">静态 SVG filter · 无 JavaScript</div><div style="position:absolute;left:26px;bottom:26px;display:flex;align-items:center;gap:14px"><div class="c-capsule" data-size="180" data-glass="capsule"><span style="font-size:13px;font-weight:500;color:#fff">Liquid Glass</span></div><span style="color:#fff;font-size:12px;opacity:.78">位移 + 高光贴图在构建期算好</span></div></div></section></div><div class="l-stack l-stack--3"><div class="c-section">按钮</div><section class="c-card"><div class="l-pad l-stack l-stack--4"><div class="c-row"><div class="c-row__label">变体<span class="c-row__hint">主操作只放一个</span></div><div class="c-row__control"><div class="l-row l-row--3"><button class="c-btn" type="button"><!----><span class="c-btn__label">默认</span></button><button class="c-btn c-btn--primary" type="button"><!----><span class="c-btn__label">主要</span></button><button class="c-btn c-btn--tonal" type="button"><!----><span class="c-btn__label">柔和</span></button><button class="c-btn c-btn--danger" type="button"><!----><span class="c-btn__label">危险</span></button></div></div></div><div class="c-row"><div class="c-row__label">带图标<!----></div><div class="c-row__control"><div class="l-row l-row--3"><button class="c-btn c-btn--primary" type="button"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 10v6"></path><path d="M9 13h6"></path><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path><!----></svg><span class="c-btn__label">新建</span></button><button class="c-iconbtn" type="button" title="刷新" aria-label="刷新"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M8 16H3v5"></path><!----></svg></button><button class="c-iconbtn c-iconbtn--tonal" type="button" title="删除" aria-label="删除"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><!----></svg></button></div></div></div><div class="c-row"><div class="c-row__label">禁用<!----></div><div class="c-row__control"><button class="c-btn" type="button" disabled=""><!----><span class="c-btn__label">不可用</span></button></div></div></div></section></div><div class="l-stack l-stack--3"><div class="c-section">标签与头像</div><section class="c-card"><div class="l-pad l-stack l-stack--4"><div class="c-row"><div class="c-row__label">徽标<!----></div><div class="c-row__control"><div class="l-row l-row--3"><span class="c-badge"><!---->默认</span><span class="c-badge c-badge--accent"><!---->强调</span><span class="c-badge c-badge--danger"><!---->危险</span></div></div></div><div class="c-row"><div class="c-row__label">胶囊<!----></div><div class="c-row__control"><div class="l-row l-row--3"><div class="c-chip c-chip--interactive" aria-pressed="true"><button class="c-chip__label" type="button" aria-pressed="true"><svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"></path><path d="m22 12.18-9.17 4.16a2 2 0 0 1-1.66 0L2 12.18"></path><path d="m22 17.18-9.17 4.16a2 2 0 0 1-1.66 0L2 17.18"></path><!----></svg>Design</button><!----></div><div class="c-chip c-chip--interactive" aria-pressed="false"><span class="c-chip__label"><!---->可移除</span><button class="c-chip__x" type="button" aria-label="移除 可移除" title="移除 可移除"><svg class="ic" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path><!----></svg></button></div><div class="c-chip" aria-pressed="false"><span class="c-chip__label"><!---->纯展示</span><!----></div></div></div></div><div class="c-row"><div class="c-row__label">头像<!----></div><div class="c-row__control"><div style="align-items:center" class="l-row l-row--3"><span class="c-avatar c-avatar--sm" title="李明" aria-label="李明">李<span class="c-avatar__status c-avatar__status--online"><!----></span></span><span class="c-avatar c-avatar--lg" title="Ada Lovelace" aria-label="Ada Lovelace">AL<span class="c-avatar__status c-avatar__status--busy"><!----></span></span><span class="c-avatar c-avatar--square" title="Glass Design" aria-label="Glass Design">GD<!----></span></div></div></div></div></section></div><div class="l-stack l-stack--3"><div class="c-section">进度与占位</div><section class="c-card"><div class="l-pad l-stack l-stack--4"><div class="c-row"><div class="c-row__label">环形进度<!----></div><div class="c-row__control"><div style="align-items:center" class="l-row l-row--4"><svg style="--v:0.72" class="c-ring" viewBox="0 0 36 36" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="72" aria-label="完成度"><g><circle class="c-ring__track" cx="18" cy="18" r="15.9155"></circle></g><g><circle class="c-ring__bar" cx="18" cy="18" r="15.9155"></circle></g></svg><svg style="--v:0.38" class="c-ring c-ring--lg" viewBox="0 0 36 36" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="38" aria-label="完成度"><g><circle class="c-ring__track" cx="18" cy="18" r="15.9155"></circle></g><g><circle class="c-ring__bar" cx="18" cy="18" r="15.9155"></circle></g></svg></div></div></div><div class="c-row"><div class="c-row__label">进度条<!----></div><div class="c-row__control"><div style="width:320px"><div class="c-progress" role="progressbar" aria-label="上传" aria-valuemin="0" aria-valuemax="100" aria-valuenow="42"><div style="width:42%" class="c-progress__bar"><!----></div></div></div></div></div><div class="c-row"><div class="c-row__label">加载<!----></div><div class="c-row__control"><div style="align-items:center" class="l-row l-row--3"><span class="c-spinner" role="status" aria-label="加载中"><!----></span><div style="width:180px;height:12px" class="c-skeleton c-skeleton--text"><!----></div></div></div></div><div class="c-row"><div class="c-row__label">骨架屏<!----></div><div class="c-row__control"><div style="width:320px"><div style="width:100%" class="l-stack l-stack--3"><div style="width:100%;height:12px" class="c-skeleton c-skeleton--text"><!----></div><div style="width:100%;height:12px" class="c-skeleton c-skeleton--text"><!----></div><div style="width:62%;height:12px" class="c-skeleton c-skeleton--text"><!----></div><!----></div></div></div></div><div class="c-row"><div class="c-row__label">空态<!----></div><div class="c-row__control"><div class="c-empty"><span class="c-empty__icon"><svg class="ic" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 3a2 2 0 0 0-2 2"></path><path d="M19 3a2 2 0 0 1 2 2"></path><path d="M21 19a2 2 0 0 1-2 2"></path><path d="M5 21a2 2 0 0 1-2-2"></path><path d="M9 3h1"></path><path d="M9 21h1"></path><path d="M14 3h1"></path><path d="M14 21h1"></path><path d="M3 9v1"></path><path d="M21 9v1"></path><path d="M3 14v1"></path><path d="M21 14v1"></path><!----></svg></span><div class="c-empty__title">没有内容</div><div class="c-empty__desc">换一个筛选条件试试。</div><!----></div></div></div></div></section></div><div class="l-stack l-stack--3"><div class="c-section">行内提示</div><section class="c-card"><div class="l-pad l-stack l-stack--4"><div class="c-inline c-inline--info" role="status" aria-live="polite"><span class="c-inline__icon" aria-hidden="true"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path><!----></svg></span><div class="c-inline__body"><div class="c-inline__title">已保存</div><div class="c-inline__desc">本地状态已更新。</div></div><!----></div><div class="c-inline c-inline--warning" role="status" aria-live="polite"><span class="c-inline__icon" aria-hidden="true"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path><!----></svg></span><div class="c-inline__body"><div class="c-inline__title">注意</div><div class="c-inline__desc">这个操作不能撤销。</div></div><!----></div><div class="c-inline c-inline--danger" role="alert"><span class="c-inline__icon" aria-hidden="true"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"></circle><path d="m15 9-6 6"></path><path d="m9 9 6 6"></path><!----></svg></span><div class="c-inline__body"><div class="c-inline__title">失败</div><div class="c-inline__desc">网络不可用，请稍后重试。</div></div><!----></div></div></section></div><div class="l-stack l-stack--3"><div class="c-section">折叠</div><section class="c-card"><div class="l-pad"><div class="c-disclosure" data-open="1"><button class="c-disclosure__head" type="button" id="gd-disclosure-1-head" aria-expanded="true" aria-controls="gd-disclosure-1"><span class="c-disclosure__chev"><svg class="ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 18 6-6-6-6"></path><!----></svg></span><span class="l-fill">高级选项</span><span class="c-disclosure__hint">展开查看</span></button><div class="c-disclosure__body" id="gd-disclosure-1" role="region" aria-labelledby="gd-disclosure-1-head" aria-hidden="false"><div class="c-disclosure__inner"><div class="c-disclosure__content"><div class="l-stack l-stack--3"><div class="c-row"><div class="c-row__label">缓存<!----></div><div class="c-row__control"><button class="c-switch" type="button" role="switch" aria-checked="true" aria-label=""><span class="c-switch__knob"></span></button></div></div><div class="c-row"><div class="c-row__label">自动更新<!----></div><div class="c-row__control"><button class="c-switch" type="button" role="switch" aria-checked="false" aria-label=""><span class="c-switch__knob"></span></button></div></div></div></div></div></div></div></div></section></div><!----><!----><div class="l-stack l-stack--3"><div class="c-section">玻璃尺寸档</div><section class="c-card"><div class="l-pad l-stack l-stack--4"><p class="c-subtitle">只有显式 data-glass 的元素才套用固定尺寸贴图；不写档位仍走 Auto 涂层（无折射）。</p><div style="position:relative;display:flex;flex-wrap:wrap;align-items:flex-start;gap:16px;padding:20px;border-radius:18px;overflow:hidden;background:linear-gradient(115deg,#ff9a62 0%,#ff5f8f 34%,#7b61ff 68%,#2ec5ce 100%)"><div style="position:absolute;inset:0;background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.18) 0 2px,transparent 2px 32px)"></div><div class="c-glass-panel" data-glass="panel-320x220"><div style="position:relative;padding:18px;color:#fff;font-size:12px;letter-spacing:.04em;opacity:.92">panel 320 × 220</div></div><div class="c-glass-panel" data-glass="panel-480x320"><div style="position:relative;padding:18px;color:#fff;font-size:12px;letter-spacing:.04em;opacity:.92">panel 480 × 320</div></div><div class="c-glass-panel" data-glass="panel-640x420"><div style="position:relative;padding:18px;color:#fff;font-size:12px;letter-spacing:.04em;opacity:.92">panel 640 × 420</div></div></div><div style="position:relative;padding:20px;border-radius:18px;overflow:hidden;background:linear-gradient(115deg,#2ec5ce 0%,#7b61ff 46%,#ff5f8f 100%)"><div style="position:absolute;inset:0;background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.16) 0 2px,transparent 2px 32px)"></div><div class="c-menu" data-glass="menu-240x280" role="menu" style="position:relative;left:0;top:0"><div class="c-menu__item" role="menuitem" tabindex="-1">新建文件</div><div class="c-menu__item" role="menuitem" tabindex="-1">新建文件夹</div><div class="c-menu__sep" role="separator"></div><div class="c-menu__item" role="menuitem" tabindex="-1">重命名</div><div class="c-menu__item" role="menuitem" tabindex="-1">复制链接</div><div class="c-menu__item" role="menuitem" tabindex="-1">在访达中显示</div><div class="c-menu__item" role="menuitem" tabindex="-1">移动到…</div><div class="c-menu__item" role="menuitem" tabindex="-1">导出为 PDF</div><div class="c-menu__sep" role="separator"></div><div class="c-menu__item c-menu__item--danger" role="menuitem" tabindex="-1">删除</div></div></div></div></section></div></div></div></div><div class="c-topveil"><!----></div></div><div style="z-index:4000" class="c-toast-host" role="status" aria-live="polite" data-layer-ignore=""><!----></div></div></body></html>

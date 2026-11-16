@@ -2,6 +2,7 @@ use leptos::html;
 use leptos::prelude::*;
 use wasm_bindgen::JsValue;
 
+use crate::base::i18n::{fill, t, Strings};
 use crate::base::icon::{Icon, IconName};
 use crate::base::id::next_id;
 
@@ -100,11 +101,15 @@ fn matches_accept(name: &str, mime: &str, tokens: &[String]) -> bool {
 ///
 /// 为什么是逐文件而不是整批：一批里混进一个超限文件，不该把另外两个合格的
 /// 一起扔掉 —— 用户还得重新选一遍那两个。
+///
+/// 文案表由调用方传进来（`t()` 在事件闭包里取）：这个函数是纯函数，
+/// 不带 context，也就不会把语言钉死在组件构造那一刻。
 fn accept_files(
     files: Vec<web_sys::File>,
     accept: &str,
     limit: usize,
     max_size: u64,
+    s: Strings,
 ) -> (Vec<FileItem>, Vec<String>) {
     let tokens: Vec<String> = accept
         .split(',')
@@ -116,15 +121,21 @@ fn accept_files(
     for f in files {
         let name = f.name();
         if !matches_accept(&name, &f.type_(), &tokens) {
-            errs.push(format!("{name}：类型不支持"));
+            errs.push(fill(s.file_unsupported_fmt, &[("name", &name)]));
             continue;
         }
         if max_size > 0 && f.size() > max_size as f64 {
-            errs.push(format!("{name}：超过 {}", format_size(max_size as f64)));
+            errs.push(fill(
+                s.file_too_large_fmt,
+                &[("name", &name), ("size", &format_size(max_size as f64))],
+            ));
             continue;
         }
         if limit > 0 && ok.len() >= limit {
-            errs.push(format!("{name}：最多 {limit} 个"));
+            errs.push(fill(
+                s.file_limit_fmt,
+                &[("name", &name), ("limit", &limit.to_string())],
+            ));
             continue;
         }
         ok.push(FileItem {
@@ -178,18 +189,21 @@ pub fn FilePicker(
     // 单选天然只能一个：把 multiple 折进数字上限，校验就只剩一套判断
     let limit = if multiple { max_files } else { 1 };
     let accept_for_change = accept.clone();
-    let base = if label.is_empty() {
-        "选择文件".to_string()
-    } else {
-        label.clone()
-    };
-
+    // 兜底查文案表，留在闭包里（切语言要跟着变）。
+    let label_store = StoredValue::new_local(label);
     let text = move || {
         let list = files.get();
         match list.len() {
-            0 => base.clone(),
+            0 => {
+                let own = label_store.get_value();
+                if own.is_empty() {
+                    t().file_picker_label.to_string()
+                } else {
+                    own
+                }
+            }
             1 => list[0].name.clone(),
-            n => format!("已选 {n} 个文件"),
+            n => fill(t().files_selected_fmt, &[("n", &n.to_string())]),
         }
     };
 
@@ -252,9 +266,9 @@ pub fn FilePicker(
                         return;
                     }
                     let (items, errs) =
-                        accept_files(picked, &accept_for_change, limit, max_size);
+                        accept_files(picked, &accept_for_change, limit, max_size, t());
                     // 合格的要留下来，不合格的写进错误行 —— 见 accept_files 的注释
-                    error.set(errs.join("；"));
+                    error.set(errs.join(t().list_sep));
                     if items.is_empty() {
                         return;
                     }
@@ -268,7 +282,7 @@ pub fn FilePicker(
             {move || {
                 let list = files.get();
                 (!list.is_empty()).then(|| view! {
-                    <ul class="c-filepicker__list" aria-label="已选文件">
+                    <ul class="c-filepicker__list" aria-label=move || t().selected_files_label.to_string()>
                         {list
                             .iter()
                             .enumerate()
@@ -285,8 +299,8 @@ pub fn FilePicker(
                                         <button
                                             class="c-filepicker__remove"
                                             type="button"
-                                            aria-label=format!("移除 {name}")
-                                            title=format!("移除 {name}")
+                                            aria-label=fill(t().remove_fmt, &[("name", &name)])
+                                            title=fill(t().remove_fmt, &[("name", &name)])
                                             on:click=move |_| remove(i)
                                         >
                                             <span class="c-filepicker__remove-icon" aria-hidden="true">
@@ -347,28 +361,43 @@ pub fn DropZone(
     // 直接捕获 String 会被第一次 move 吃掉。
     let accept = StoredValue::new(accept.clone());
 
-    let main = if label.is_empty() {
-        "把文件拖到这里".to_string()
-    } else {
-        label.clone()
+    // 兜底查文案表，留在闭包里（切语言要跟着变）。
+    // 三个值各存一份 Copy 句柄：闭包只捕获 `StoredValue`，因此也是 Copy，
+    // `main` 要在 aria-label 与正文两处用。
+    let main_store = StoredValue::new_local(label);
+    let sub_store = StoredValue::new_local(hint);
+    let browse_store = StoredValue::new_local(browse);
+    let main = move || {
+        let own = main_store.get_value();
+        if own.is_empty() {
+            t().drop_hint.to_string()
+        } else {
+            own
+        }
     };
-    let sub = if hint.is_empty() {
-        "或点击选择文件".to_string()
-    } else {
-        hint.clone()
+    let sub = move || {
+        let own = sub_store.get_value();
+        if own.is_empty() {
+            t().drop_sub_hint.to_string()
+        } else {
+            own
+        }
     };
-    let browse_text = if browse.is_empty() {
-        "浏览…".to_string()
-    } else {
-        browse.clone()
+    let browse_text = move || {
+        let own = browse_store.get_value();
+        if own.is_empty() {
+            t().browse.to_string()
+        } else {
+            own
+        }
     };
 
     let take = move |picked: Vec<web_sys::File>| {
         if picked.is_empty() {
             return;
         }
-        let (items, errs) = accept_files(picked, &accept.get_value(), limit, max_size);
-        error.set(errs.join("；"));
+        let (items, errs) = accept_files(picked, &accept.get_value(), limit, max_size, t());
+        error.set(errs.join(t().list_sep));
         if !items.is_empty() {
             if let Some(cb) = on_change {
                 cb.run(items);
@@ -455,14 +484,14 @@ pub fn DropZone(
                 take(picked);
             }
         >
-            <div class="c-dropzone__label">{main.clone()}</div>
-            <div class="c-dropzone__hint">{sub.clone()}</div>
+            <div class="c-dropzone__label">{main}</div>
+            <div class="c-dropzone__hint">{sub}</div>
             <button
                 class="c-btn c-btn--sm c-dropzone__browse"
                 type="button"
                 disabled=disabled
             >
-                {browse_text.clone()}
+                {browse_text}
             </button>
 
             <input

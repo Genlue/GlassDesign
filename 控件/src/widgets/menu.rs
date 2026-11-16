@@ -9,11 +9,12 @@ use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 
 use crate::base::anchor::{self, AnchorSpec, AnchorWatch, Placement, Side};
+use crate::base::i18n::t;
 use crate::base::icon::{Icon, IconName};
 use crate::base::id::next_id;
 use crate::base::overlay::{
-    active_element, focus_is_free, listen_document, listen_window, schedule, GlobalListener,
-    OverlayHost, OverlayId, OverlayKind,
+    active_element, focus_is_free, listen_document, listen_window, schedule, ExitGate,
+    GlobalListener, OverlayHost, OverlayId, OverlayKind,
 };
 
 /// 与触发器之间的固定间距。属于「定位几何」，不是视觉令牌：
@@ -447,6 +448,10 @@ fn build_panel(
 ) -> AnyView {
     let layer = RwSignal::new(None::<OverlayId>);
     let host = ctx.host;
+    // 退场态：`visible` 已经 false，但面板还留在屏幕上播过渡、也还留在栈上。
+    // 每层各自一份 —— 子菜单和父菜单可以同时退场，各自等自己的票。
+    let closing = RwSignal::new(false);
+    let gate = ExitGate::new();
     let hover_timer = StoredValue::new_local(None::<i32>);
     let typeahead_buf = StoredValue::new_local((String::new(), 0.0f64));
 
@@ -606,8 +611,11 @@ fn build_panel(
     // 第一帧的样式：先藏到视口外，等 `anchor::apply` 量完再显形。
     // `width:max-content` 是为了让 `offset_width` 就是「最宽那一行」；玻璃档
     // （menu-240x280）的宽高由 CSS 写死，不能被它顶掉，所以只在非玻璃档写。
+    //
+    // 「在场上」判的是栈句柄而不是 `visible`：关闭后要先留在屏幕上播完退场动画，
+    // 出栈（`layer` 归 None）才是真正的收起时刻。
     let panel_style = move || {
-        if !visible.get() {
+        if layer.get().is_none() {
             return "display:none".to_string();
         }
         let z = layer
@@ -703,8 +711,14 @@ fn build_panel(
     //
     // 父层 id 在这里**只读一次**（untracked）：它晚于本层 effect 被写入是常态
     // （根菜单的 id 在自己的 effect 里才有），但不能因此让本层 effect 重跑。
+    //
+    // 关闭走两步：先把本层标成 closing（面板留着、栈上留着），EXIT_MS 之后才出栈。
+    // 「先入栈、再请人」的顺序不受影响 —— 仲裁在 `push_child` 里同步完成，这里只推迟出栈。
     Effect::new(move |_| {
         if visible.get() {
+            // 退场期间又可见（鼠标扫回来 / 重开）：作废那张票，面板原地回到 open 态。
+            gate.cancel();
+            closing.set(false);
             if layer.get_untracked().is_none() {
                 let parent = parent_layer.and_then(|p| p.get_untracked());
                 let id = host.push_child(
@@ -715,8 +729,20 @@ fn build_panel(
                 layer.set(Some(id));
             }
         } else if let Some(id) = layer.get_untracked() {
-            host.remove(id);
-            layer.set(None);
+            if closing.get_untracked() {
+                // Esc 连按：这一层已经在退场，绝不能再挂第二个出栈定时器。
+                return;
+            }
+            closing.set(true);
+            // 退场层不再接 Esc：连按两下要关两层，不能都打在这一层上。
+            host.mark_closing(id);
+            gate.arm().then(move || {
+                closing.try_set(false);
+                host.remove(id);
+                if layer.try_get_untracked() == Some(Some(id)) {
+                    layer.try_set(None);
+                }
+            });
         }
     });
 
@@ -732,16 +758,37 @@ fn build_panel(
     // Portal 的 children 闭包会按 move 捕获，属性里用的是另一份；`owner` 后面
     // 还要传给子面板（同一串菜单靠它被点外判定认出来）。
     let owner_attr = owner.clone();
+    // 空 label 不在这里兜底：属性渲染时再查文案表，切语言才能立刻反映到 aria-label。
+    // 存成 `StoredValue`（Copy）而不是闭包：Portal 的 children 必须是 `Fn`，
+    // 捕获一个非 Copy 的闭包会把整块视图退化成 `FnOnce`。
+    let label_store = StoredValue::new_local(label);
 
     let panel = view! {
         <Portal>
             <div
                 class="c-menu"
                 role="menu"
-                aria-label=label.clone()
+                aria-label=move || {
+                    let own = label_store.get_value();
+                    if own.is_empty() {
+                        t().menu_label.to_string()
+                    } else {
+                        own
+                    }
+                }
                 tabindex="-1"
                 data-menu-owner=owner_attr.clone()
                 data-glass=glass
+                // 退场态给 CSS 用（真正收起看栈句柄）。
+                data-state=move || {
+                    if closing.get() {
+                        Some("closing")
+                    } else if layer.get().is_some() {
+                        Some("open")
+                    } else {
+                        None
+                    }
+                }
                 node_ref=panel_ref
                 style=panel_style
                 on:keydown=on_key
@@ -1092,12 +1139,7 @@ pub fn Menu(
     #[prop(optional)] on_select: Option<Callback<String>>,
     #[prop(optional)] on_close: Option<Callback<()>>,
 ) -> impl IntoView {
-    let label = if label.is_empty() {
-        "菜单".to_string()
-    } else {
-        label
-    };
-
+    // 空 label 不在这里兜底：面板渲染时才查文案表，切语言能立刻反映到 aria-label。
     menu_core(
         items,
         Signal::derive(move || open.get().unwrap_or(false)),

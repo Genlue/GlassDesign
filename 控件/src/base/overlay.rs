@@ -75,6 +75,9 @@ struct Entry {
     return_to: Option<web_sys::HtmlElement>,
     /// 只聚焦一次：Leptos 重渲染会反复触发绑定，不能每次都抢焦点。
     focused: bool,
+    /// 正在播退场动画（已经从「打开」变成「关闭」，但还要在栈上待 EXIT_MS）。
+    /// Esc 要跳过它，否则连按两次只有第一下有效。
+    closing: bool,
 }
 
 /// 浮层栈。`OverlayHost::use_or_provide()` 取；`AppShell` 已经在根上 provide 一次。
@@ -114,7 +117,19 @@ impl OverlayHost {
         self.push_child(kind, None, on_dismiss)
     }
 
-    /// 入栈一条**挂在 `parent` 下面**的浮层（目前只有子菜单用）。
+    /// 入栈一条浮层：**有环境父层就挂上去**，没有就等价 `push`。
+    ///
+    /// 给「容器里的浮层」用：`Popover` / `Sheet` 里再开下拉，新层必须挂到容器那层
+    /// 下面，否则仲裁会把它当独立浮层、顺手把容器自己请出（气泡里一点下拉，气泡就没了）。
+    /// 父层由 `ParentScope` 放进 context，组件不需要新的 prop。
+    pub fn push_adopted(&self, kind: OverlayKind, on_dismiss: Callback<()>) -> OverlayId {
+        // 父层可能已经不在栈上了（容器先关、里面的面板还挂着）：这时不能沿用那个 id ——
+        // 仲裁会把它当祖先链，把真正该保留的层算成「无关」，反过来把容器请出。
+        let parent = ambient_parent().filter(|id| self.is_open(*id));
+        self.push_child(kind, parent, on_dismiss)
+    }
+
+    /// 入栈一条**挂在 `parent` 下面**的浮层（子菜单、以及 `push_adopted` 的落地）。
     ///
     /// `parent` 是「我的容器」而不是「我的兄弟」：祖先链上的层不会被请出，
     /// 所以打开子菜单不会把父菜单收掉；而另一个根菜单仍然会被收掉。
@@ -145,6 +160,7 @@ impl OverlayHost {
                 container: None,
                 return_to,
                 focused: false,
+                closing: false,
             });
         });
 
@@ -156,7 +172,9 @@ impl OverlayHost {
         id
     }
 
-    /// 把焦点容器交给栈（模态必调）。第一次绑定时上 inert 并把焦点送进容器。
+    /// 把面板交给栈。**模态必调**（第一次绑定时上 inert 并把焦点送进容器）；
+    /// 非模态也建议调 —— 父层的「点外关闭」要靠它认出「这一下点的是我的子面板」
+    /// （见 `owns_descendant`），否则点下拉的选项会连气泡一起收掉。
     pub fn bind(&self, id: OverlayId, container: web_sys::HtmlElement) {
         let mut first_modal = false;
         self.entries.update(|list| {
@@ -234,13 +252,78 @@ impl OverlayHost {
         self.depth() > 0
     }
 
-    /// Esc / 点外调用。只碰最上层，不递归。
+    /// 组件开始播退场动画时调一次。
+    ///
+    /// 退场层还留在栈上（z 与遮罩都还要它），但它已经不接受 Esc 了 ——
+    /// 否则 140ms 内连按两次 Esc 只会关掉一层，第二下打在正在消失的那层上。
+    pub fn mark_closing(&self, id: OverlayId) {
+        self.entries.update(|list| {
+            if let Some(entry) = list.iter_mut().find(|e| e.id == id) {
+                entry.closing = true;
+            }
+        });
+    }
+
+    /// Esc / 点外调用。只碰最上层**还在打开着的**那一层，不递归。
     pub fn dismiss_top(&self) {
-        let cb = self.entries.with_untracked(|list| list.last().map(|e| e.on_dismiss));
+        let cb = self
+            .entries
+            .with_untracked(|list| list.iter().rev().find(|e| !e.closing).map(|e| e.on_dismiss));
         if let Some(cb) = cb {
             cb.run(());
         }
     }
+
+    /// 点是不是落在「挂在我下面那一层」的面板上。
+    ///
+    /// 场景：气泡里放下拉，点下拉的选项时 `pointerdown` 会冒到文档级；气泡的
+    /// 「点外关闭」如果不认这块面板，就会把气泡连同下拉一起收掉。
+    ///
+    /// 认的依据是 lineage（`parent`）而不是 DOM：子面板已经 `<Portal>` 到 body，
+    /// 祖先关系在 DOM 上根本不存在。前提是子层把自己的面板交给栈（`bind`）。
+    pub fn owns_descendant(&self, id: OverlayId, target: &web_sys::Node) -> bool {
+        self.entries.with_untracked(|list| {
+            list.iter()
+                .filter(|e| e.id != id && chain(list, e.id).contains(&id))
+                .filter_map(|e| e.container.as_ref())
+                .any(|panel| panel.contains(Some(target)))
+        })
+    }
+}
+
+/// 当前组件树属于哪个浮层：`push_adopted` 用它给新层填 `parent`。
+///
+/// 为什么存 `RwSignal<Option<OverlayId>>`（普通 signal）而不是 `LocalStorage` 变体：
+/// `provide_context` 要求 `Send + Sync`，`RwSignal<T, LocalStorage>` 是 `!Send`，
+/// 塞不进 context。这里只放一个 id，跨线程也安全。「不能是全局」这条仍然成立 ——
+/// 它由每个容器面板各 provide 一份，作用域就是那块面板的内容。
+#[derive(Clone, Copy)]
+struct AmbientParent(RwSignal<Option<OverlayId>>);
+
+/// 只在 `ParentScope` 里调用。
+pub(crate) fn provide_ambient_parent(id: RwSignal<Option<OverlayId>>) {
+    provide_context(AmbientParent(id));
+}
+
+/// 当前所处的面板（不在任何容器面板里时是 `None`）。
+fn ambient_parent() -> Option<OverlayId> {
+    use_context::<AmbientParent>().and_then(|p| p.0.get_untracked())
+}
+
+/// 面板内容的作用域：把「这个面板的栈句柄」放进 context，供里面的
+/// `Select` / `Combobox` / `DatePicker` / `DateRange` / `ColorWell` 用 `push_adopted` 认父。
+///
+/// **唯一的坑**：`children()` 必须在这里被调用。`provide_context` 只对「当前 owner
+/// 及之后创建的子 owner」可见；若在外面先把 `children()` 求值、再把结果塞进来，
+/// 那些组件就已经挂在上一层 owner 上了，它们的 `use_context` 永远看不到这里的父层。
+#[component]
+pub(crate) fn ParentScope(
+    /// 本面板的栈句柄；面板关闭时它是 `None`，此时子层等价于独立浮层。
+    id: RwSignal<Option<OverlayId>>,
+    children: Children,
+) -> impl IntoView {
+    provide_ambient_parent(id);
+    children()
 }
 
 /// 一条浮层的祖先链，从根排到自己（含自己）。
@@ -335,7 +418,11 @@ fn install_listener(entries: RwSignal<Vec<Entry>, LocalStorage>) -> Option<Rc<Es
         }
         match ev.key().as_str() {
             "Escape" => {
-                let top = entries.with_untracked(|list| list.last().map(|e| e.on_dismiss));
+                // 与 `OverlayHost::dismiss_top` 同一条规则：跳过正在播退场动画的层，
+                // 否则 140ms 内连按两次 Esc 只会关掉一层（第二下打在正在消失的那层上）。
+                let top = entries.with_untracked(|list| {
+                    list.iter().rev().find(|e| !e.closing).map(|e| e.on_dismiss)
+                });
                 if let Some(cb) = top {
                     ev.prevent_default();
                     cb.run(());
@@ -508,6 +595,76 @@ pub(crate) fn schedule(f: impl FnOnce() + 'static) {
     let cb: js_sys::Function =
         Closure::once_into_js(Box::new(f) as Box<dyn FnOnce()>).unchecked_into();
     let _ = window.request_animation_frame(&cb);
+}
+
+/// 延时执行（毫秒）。退场动画用：动画期间面板还在屏幕上，出栈要等它播完。
+pub(crate) fn schedule_after(ms: f64, f: impl FnOnce() + 'static) {
+    let Some(window) = web_sys::window() else {
+        return;
+    };
+    let cb: js_sys::Function =
+        Closure::once_into_js(Box::new(f) as Box<dyn FnOnce()>).unchecked_into();
+    let _ = window.set_timeout_with_callback_and_timeout_and_arguments_0(&cb, ms as i32);
+}
+
+/// 退场时长（毫秒）。**一处定义**：组件等它出栈，CSS 的 transition 必须 ≤ 这个数
+/// （见 `13-menu` / `37-dialog-popover` / `42-drawer` / `49-sheet` 里
+/// `[data-state="closing"]` 那几条，都取 `--dur-1` = 120ms）。
+///
+/// 为什么 Rust 侧不读 `prefers-reduced-motion`：媒体查询只在 CSS 里生效，Rust 若要读就得
+/// `matchMedia`，而它随系统设置变化时还要再订阅一次 —— 两边状态一定会漂。约定是
+/// 「Rust 只管固定等 EXIT_MS，CSS 负责在减动效时把过渡设成 0s」：面板多留 140ms
+/// 不可见，比「Rust 提前出栈、CSS 还在播」安全得多。
+pub(crate) const EXIT_MS: f64 = 140.0;
+
+/// 退场计时的闸门：保证一个组件**只有一个**待执行的出栈定时器，且能被重开打断。
+///
+/// 为什么不用 `clearTimeout` 存句柄：句柄要放进 `StoredValue`、每处关闭都得先清一遍，
+/// 漏一个地方就会出现「关掉又自己出栈一次」。用自增 token 则相反 —— 旧回调照常触发，
+/// 但票已经过期，自己退出，成本只是一次空跑。
+#[derive(Clone, Copy)]
+pub(crate) struct ExitGate {
+    seq: RwSignal<u32>,
+}
+
+impl ExitGate {
+    pub fn new() -> Self {
+        Self {
+            seq: RwSignal::new(0),
+        }
+    }
+
+    /// 作废所有还没跑到的退场回调（重开时调）。
+    pub fn cancel(&self) {
+        self.seq.update(|n| *n = n.wrapping_add(1));
+    }
+
+    /// 给这次关闭领一张票，同时作废旧票。调用方随后 `.then(..)` 才真正延时出栈。
+    pub fn arm(&self) -> ExitTicket {
+        let at = self.seq.get_untracked().wrapping_add(1);
+        self.seq.set(at);
+        ExitTicket { seq: self.seq, at }
+    }
+}
+
+/// 一次关闭的票。票过期（又关闭了一次 / 被重开 cancel / 组件已卸载）时回调不执行。
+#[derive(Clone, Copy)]
+pub(crate) struct ExitTicket {
+    seq: RwSignal<u32>,
+    at: u32,
+}
+
+impl ExitTicket {
+    pub fn then(self, f: impl FnOnce() + 'static) {
+        let Self { seq, at } = self;
+        schedule_after(EXIT_MS, move || {
+            // 组件卸载后 signal 已释放 → try_get 给 None，按「票过期」处理。
+            if seq.try_get_untracked() != Some(at) {
+                return;
+            }
+            f();
+        });
+    }
 }
 
 /// 文档级监听器的句柄。Drop 时解绑，所以放进 `StoredValue` 就能活到组件卸载。

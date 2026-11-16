@@ -1,5 +1,6 @@
 use leptos::prelude::*;
 
+use crate::base::i18n::{fill, t};
 use crate::base::icon::{Icon, IconName};
 
 fn window_pages(current: u32, total: u32) -> Vec<Option<u32>> {
@@ -52,7 +53,7 @@ pub fn Pagination(
                 Some(n) => view! {
                     <button class="c-pagination__btn c-pagination__page" type="button"
                         data-page=n
-                        aria-label=format!("第 {n} 页")
+                        aria-label=fill(t().page_label_fmt, &[("n", &n.to_string())])
                         aria-current=(n == current()).then_some("page")
                         on:click=move |_| go(n)>{n}</button>
                 }
@@ -63,23 +64,28 @@ pub fn Pagination(
             .collect::<Vec<_>>()
     };
 
-    let label = if label.is_empty() {
-        "分页".to_string()
-    } else {
-        label
+    // 兜底查文案表，留在属性闭包里（切语言要跟着变）。
+    let label_store = StoredValue::new_local(label);
+    let label = move || {
+        let own = label_store.get_value();
+        if own.is_empty() {
+            t().pagination_label.to_string()
+        } else {
+            own
+        }
     };
     view! {
         <nav class="c-pagination" role="navigation" aria-label=label>
-            <div class="c-pagination__pager" role="group" aria-label="页码">
+            <div class="c-pagination__pager" role="group" aria-label=move || t().pages_label.to_string()>
                 <button class="c-pagination__btn c-pagination__nav" type="button"
-                    aria-label="上一页" title="上一页"
+                    aria-label=move || t().prev_page.to_string() title=move || t().prev_page.to_string()
                     aria-disabled=move || (current() <= 1).then_some("true")
                     on:click=move |_| go(current().saturating_sub(1))>
                     <Icon name=IconName::CHEVRON_LEFT size=14 />
                 </button>
                 <div class="c-pagination__pages">{pages}</div>
                 <button class="c-pagination__btn c-pagination__nav" type="button"
-                    aria-label="下一页" title="下一页"
+                    aria-label=move || t().next_page.to_string() title=move || t().next_page.to_string()
                     aria-disabled=move || (current() >= total).then_some("true")
                     on:click=move |_| go(current() + 1)>
                     <Icon name=IconName::CHEVRON_RIGHT size=14 />
@@ -87,7 +93,10 @@ pub fn Pagination(
             </div>
             <div class="c-pagination__meta">
                 <span class="c-pagination__summary" aria-live="polite" aria-atomic="true">
-                    {move || format!("第 {} 页，共 {} 页", current(), total)}
+                    {move || fill(
+                        t().page_status_fmt,
+                        &[("page", &current().to_string()), ("total", &total.to_string())],
+                    )}
                 </span>
             </div>
         </nav>

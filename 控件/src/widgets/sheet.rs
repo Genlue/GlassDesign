@@ -1,8 +1,9 @@
 use leptos::html;
 use leptos::prelude::*;
 
+use crate::base::i18n::t;
 use crate::base::icon::{Icon, IconName};
-use crate::base::overlay::{OverlayHost, OverlayId, OverlayKind};
+use crate::base::overlay::{ExitGate, OverlayHost, OverlayId, OverlayKind, ParentScope};
 
 /// 流程面板宽度档。`Md` 正好命中玻璃档 `sheet-520x360`（宽 520、高 360）。
 ///
@@ -62,10 +63,17 @@ pub fn Sheet(
     let host = OverlayHost::use_or_provide();
     let layer = RwSignal::new(None::<OverlayId>);
     let level = RwSignal::new(1usize);
+    // 退场态：`open` 已 false，但面板还挂在屏幕上播过渡、也还留在栈上。
+    let closing = RwSignal::new(false);
+    let gate = ExitGate::new();
     let is_open = move || open.get().unwrap_or(false);
     let width = size.width();
 
     let close = move || {
+        // 幂等：退场态里再按 Esc / 再点遮罩（此时本层仍是栈顶）不能再叫一次关闭。
+        if !is_open() {
+            return;
+        }
         if let Some(cb) = on_close {
             cb.run(());
         }
@@ -74,6 +82,9 @@ pub fn Sheet(
     // 入栈/出栈跟着 open 走。z、Esc、inert、焦点全部由 OverlayHost 决定。
     Effect::new(move |_| {
         if is_open() {
+            // 退场期间又打开：作废那张票，面板原地回到 open 态。
+            gate.cancel();
+            closing.set(false);
             if layer.get_untracked().is_none() {
                 let dismiss = if dismissible {
                     Callback::new(move |_| close())
@@ -91,8 +102,20 @@ pub fn Sheet(
                 }
             }
         } else if let Some(id) = layer.get_untracked() {
-            host.remove(id);
-            layer.set(None);
+            if closing.get_untracked() {
+                // 已经在退场，绝不能再挂第二个出栈定时器。
+                return;
+            }
+            closing.set(true);
+            // 退场层不再接 Esc：连按两下要关两层，不能都打在这一层上。
+            host.mark_closing(id);
+            gate.arm().then(move || {
+                closing.try_set(false);
+                host.remove(id);
+                if layer.try_get_untracked() == Some(Some(id)) {
+                    layer.try_set(None);
+                }
+            });
         }
     });
 
@@ -108,16 +131,21 @@ pub fn Sheet(
     let has_title = !title.is_empty();
     let has_desc = !description.is_empty();
     // 有标题就用标题当可访问名；没有时给个兜底，别让读屏念出空名字。
-    let sheet_label = if has_title {
-        title.clone()
-    } else {
-        "流程面板".to_string()
+    // 兜底查文案表，且放在闭包里 —— 切语言时这个属性要跟着变。
+    let title_for_label = title.clone();
+    let sheet_label = move || {
+        if has_title {
+            title_for_label.clone()
+        } else {
+            t().sheet_label.to_string()
+        }
     };
 
     view! {
         <div
             class="c-sheet-scrim"
-            style=move || if is_open() {
+            // 「在场上」判栈句柄而不是 open：关闭后遮罩与面板要留 EXIT_MS 播退场。
+            style=move || if layer.get().is_some() {
                 let z = layer
                     .get()
                     .map(|id| host.z(id))
@@ -127,6 +155,15 @@ pub fn Sheet(
                 "display:none".to_string()
             }
             data-level=move || level.get().to_string()
+            data-state=move || {
+                if closing.get() {
+                    Some("closing")
+                } else if layer.get().is_some() {
+                    Some("open")
+                } else {
+                    None
+                }
+            }
             on:pointerdown=move |ev| {
                 if !dismissible {
                     return;
@@ -154,7 +191,7 @@ pub fn Sheet(
                         <button
                             class="c-sheet__close"
                             type="button"
-                            aria-label="关闭"
+                            aria-label=move || t().close.to_string()
                             on:click=move |_| close()
                         >
                             <span class="c-sheet__close-icon">
@@ -164,8 +201,12 @@ pub fn Sheet(
                     })}
                     {has_desc.then(|| view! { <p class="c-sheet__desc">{description.clone()}</p> })}
                 </div>
-                <div class="c-sheet__body">{children.map(|c| c())}</div>
-                {footer.map(|f| view! { <div class="c-sheet__foot">{f()}</div> })}
+                // 面板里放表单 / 下拉是常态：动作区与身体都归这一层管，
+                // 里面再开下拉时新层挂在本面板下面，不会反过来把面板请出。
+                <ParentScope id=layer>
+                    <div class="c-sheet__body">{children.map(|c| c())}</div>
+                    {footer.map(|f| view! { <div class="c-sheet__foot">{f()}</div> })}
+                </ParentScope>
             </div>
         </div>
     }

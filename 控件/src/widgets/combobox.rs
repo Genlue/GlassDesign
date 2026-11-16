@@ -6,6 +6,7 @@ use leptos::prelude::*;
 use wasm_bindgen::JsCast;
 
 use crate::base::anchor::{self, AnchorSpec, AnchorWatch};
+use crate::base::i18n::t;
 use crate::base::icon::{Icon, IconName};
 use crate::base::id::next_id;
 use crate::base::overlay::{schedule, OverlayHost, OverlayId, OverlayKind};
@@ -151,7 +152,8 @@ pub fn Combobox(
             return;
         }
         // 只负责「开」：面板挂到 body 之后再由 effect 量高度定位。
-        let id = host.push(
+        // `push_adopted`：在气泡 / 流程面板里时挂到容器那层下面，否则等价 `push`。
+        let id = host.push_adopted(
             OverlayKind::Popover,
             Callback::new(move |_| {
                 close();
@@ -198,6 +200,10 @@ pub fn Combobox(
             // Portal 还没挂好：NodeRef 是响应式的，挂上后会再跑一遍。
             return;
         };
+        // 把面板交给栈：外层气泡的「点外关闭」要认出「这一下点的是我的子面板」。
+        if let Some(id) = layer.get_untracked() {
+            host.bind(id, panel.clone().into());
+        }
         schedule(move || {
             // 这一帧里可能已经关了（快速开→关）：别再建一个新的跟随句柄。
             if !open.get_untracked() {
@@ -380,20 +386,23 @@ pub fn Combobox(
         }
     };
 
-    let aria_label = if !label.is_empty() {
-        label.clone()
-    } else if !placeholder.is_empty() {
-        placeholder.clone()
-    } else {
-        "搜索".to_string()
+    // 兜底顺序：label → placeholder → 文案表。三段都可能为空，所以存在 Copy 句柄里、
+    // 在属性闭包中现取现判 —— 切语言要立刻反映到 aria-label，又不能把视图退化成 `FnOnce`。
+    let own_label = StoredValue::new_local(label.clone());
+    let own_placeholder = StoredValue::new_local(placeholder.clone());
+    let aria_label = move || {
+        let l = own_label.get_value();
+        if !l.is_empty() {
+            return l;
+        }
+        let p = own_placeholder.get_value();
+        if !p.is_empty() {
+            return p;
+        }
+        t().search_placeholder.to_string()
     };
-    // 同样是因为 Portal 的 children 必须是 `Fn`：捕获的 String 不可 Copy，
-    // 放进内层闭包会把整个视图变成 FnOnce。存成 Copy 句柄。
-    let panel_label = StoredValue::new_local(if label.is_empty() {
-        "候选".to_string()
-    } else {
-        label.clone()
-    });
+    // 面板名：没传 label 就用文案表兜底（同样在属性闭包里判）。
+    let panel_label = StoredValue::new_local(label);
     let panel_id_attr = panel_id.clone();
     let panel_id_active = panel_id.clone();
 
@@ -489,7 +498,14 @@ pub fn Combobox(
                         class="c-combobox__panel"
                         id=panel_key.get_value()
                         role="listbox"
-                        aria-label=panel_label.get_value()
+                        aria-label=move || {
+                            let own = panel_label.get_value();
+                            if own.is_empty() {
+                                t().suggestions_label.to_string()
+                            } else {
+                                own
+                            }
+                        }
                         tabindex="-1"
                         node_ref=panel_ref
                         style=panel_style
@@ -499,9 +515,9 @@ pub fn Combobox(
                             if items.is_empty() {
                                 return view! {
                                     <div class="c-combobox__state" data-kind="empty">
-                                        <span>"没有匹配项"</span>
+                                        <span>{move || t().no_results}</span>
                                         {allow_custom.then(|| view! {
-                                            <span class="c-combobox__hint">"回车使用当前输入"</span>
+                                            <span class="c-combobox__hint">{move || t().enter_to_use}</span>
                                         })}
                                     </div>
                                 }

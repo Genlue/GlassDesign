@@ -1,5 +1,6 @@
 pub mod anchor;
 pub mod icon;
+pub mod i18n;
 pub mod id;
 pub mod install;
 pub mod overlay;

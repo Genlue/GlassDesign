@@ -60,6 +60,9 @@ pub fn OverlayPage() -> impl IntoView {
     let sheet_open = RwSignal::new(false);
     let drawer_open = RwSignal::new(false);
     let tf_pop = RwSignal::new(false);
+    // 气泡里放下拉：验证「父链」（下拉把气泡当父层，收起下拉不收气泡）。
+    let pop_inner = RwSignal::new(false);
+    let pop_inner_plan = RwSignal::new("pro".to_string());
 
     let on_pick = Callback::new(move |id: String| {
         picked.set(id.clone());
@@ -165,6 +168,31 @@ pub fn OverlayPage() -> impl IntoView {
                                     }.into_any())>
                                     <div class="l-stack l-stack--2">
                                         <span class="c-subtitle">"右侧贴边，放不下翻左。"</span>
+                                    </div>
+                                </Popover>
+                                <Popover open=Signal::derive(move || pop_inner.get())
+                                    placement=PopoverPlacement::BottomStart
+                                    width=260
+                                    on_close=Callback::new(move |_| pop_inner.set(false))
+                                    label="气泡里放下拉"
+                                    trigger=Box::new(move || view! {
+                                        <Button label="气泡里放下拉" on_click=Callback::new(move |_| pop_inner.set(true)) />
+                                    }.into_any())>
+                                    <div class="l-stack l-stack--2">
+                                        <span class="c-subtitle" style="white-space:normal">
+                                            "下拉把气泡当父层：开下拉不收气泡，选完一项也不收（父链，不是点外）。"
+                                        </span>
+                                        <Select
+                                            options=vec![
+                                                SelectOption::new("free", "免费版"),
+                                                SelectOption::new("pro", "专业版"),
+                                                SelectOption::new("team", "团队版"),
+                                            ]
+                                            value=Signal::derive(move || pop_inner_plan.get())
+                                            on_change=Callback::new(move |v| pop_inner_plan.set(v))
+                                            label="气泡内套餐"
+                                            width=200
+                                        />
                                     </div>
                                 </Popover>
                             </div>
