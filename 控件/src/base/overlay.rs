@@ -1,8 +1,14 @@
-//! 统一浮层栈：Esc、z-index、模态 inert 与焦点归还的唯一权威。
+//! 统一浮层栈：Esc、z-index、模态 inert、同 rank 仲裁与焦点归还的唯一权威。
 //!
 //! 为什么需要它：Dialog 与 Select 各写一套 z-index 与关闭逻辑，两层以上就会互相压；
 //! Dialog 也没有焦点陷阱。这里用 Leptos context 提供**一个**栈（不是全局单例），
 //! 组件只入栈/出栈，不再自己决定「谁在最上面」。
+//!
+//! 两条规则让「同时开着两个菜单」不可能发生：
+//!
+//! 1. **lineage**：子菜单入栈时声明父层（`push_child`），父层永远不会被自己的子层请出；
+//! 2. **仲裁**：新层入栈时，祖先链以外的**非模态**层全部收一遍。模态层不动 ——
+//!    菜单不该因为弹了个对话框就被别人关掉，对话框之间也不互相仲裁。
 
 use std::rc::Rc;
 
@@ -59,6 +65,9 @@ pub struct OverlayId(u32);
 struct Entry {
     id: OverlayId,
     kind: OverlayKind,
+    /// 这条浮层挂在谁下面：子菜单挂在根菜单下，`None` 表示独立浮层。
+    /// 仲裁靠它区分「我的父层」与「无关浮层」—— 认不出父层就会把父菜单一起关掉。
+    parent: Option<OverlayId>,
     on_dismiss: Callback<()>,
     /// 焦点陷阱的边界（只对模态有意义）。
     container: Option<web_sys::HtmlElement>,
@@ -98,8 +107,31 @@ impl OverlayHost {
         use_context::<Self>().unwrap_or_else(Self::provide)
     }
 
-    /// 入栈。返回的句柄交给 `remove`。
+    /// 入栈一条**独立**浮层（菜单 / 气泡 / 对话框）。返回的句柄交给 `remove`。
+    ///
+    /// 独立层会请出栈上其它非模态层：两个菜单不可能同时开着。
     pub fn push(&self, kind: OverlayKind, on_dismiss: Callback<()>) -> OverlayId {
+        self.push_child(kind, None, on_dismiss)
+    }
+
+    /// 入栈一条**挂在 `parent` 下面**的浮层（目前只有子菜单用）。
+    ///
+    /// `parent` 是「我的容器」而不是「我的兄弟」：祖先链上的层不会被请出，
+    /// 所以打开子菜单不会把父菜单收掉；而另一个根菜单仍然会被收掉。
+    pub fn push_child(
+        &self,
+        kind: OverlayKind,
+        parent: Option<OverlayId>,
+        on_dismiss: Callback<()>,
+    ) -> OverlayId {
+        // 仲裁要在入栈前算：算的是「谁挡在前面」，新层自己不该参与。
+        let keep = parent
+            .map(|p| self.entries.with_untracked(|list| chain(list, p)))
+            .unwrap_or_default();
+        let vacated = self
+            .entries
+            .with_untracked(|list| vacate_targets(list, &keep));
+
         let id = OverlayId(self.next.get_untracked() + 1);
         self.next.set(id.0);
         // 记录打开前的焦点：必须在 DOM 变动之前取，晚了就是容器自己。
@@ -108,12 +140,19 @@ impl OverlayHost {
             list.push(Entry {
                 id,
                 kind,
+                parent,
                 on_dismiss,
                 container: None,
                 return_to,
                 focused: false,
             });
         });
+
+        // 先入栈、再请人：被请出的那一层关闭时要判断「焦点有没有被别处接住」，
+        // 它必须已经能在栈上看见新层，否则会把焦点抢回自己的触发器。
+        for cb in vacated {
+            cb.run(());
+        }
         id
     }
 
@@ -202,6 +241,72 @@ impl OverlayHost {
             cb.run(());
         }
     }
+}
+
+/// 一条浮层的祖先链，从根排到自己（含自己）。
+///
+/// 环防御：父链最多和栈一样长 —— `parent` 都是比自己早入栈的 id，
+/// 正常情况下爬不到一半就断了，这里只是不让未来的改动把宿主挂死。
+fn chain(list: &[Entry], id: OverlayId) -> Vec<OverlayId> {
+    let mut out = Vec::new();
+    let mut cur = Some(id);
+    while let Some(now) = cur {
+        if out.contains(&now) {
+            break;
+        }
+        out.push(now);
+        cur = list.iter().find(|e| e.id == now).and_then(|e| e.parent);
+    }
+    out.reverse();
+    out
+}
+
+/// 仲裁名单：`keep`（新层的祖先链）以外的非模态层，全部请出。
+///
+/// 只取每棵无关子树的**根**：父层收起会顺着信号带着子层一起收，
+/// 逐个回调会让同一个组件在关闭过程中被改两次状态。
+fn vacate_targets(list: &[Entry], keep: &[OverlayId]) -> Vec<Callback<()>> {
+    let doomed: Vec<OverlayId> = list
+        .iter()
+        .filter(|e| !e.kind.is_modal() && !keep.contains(&e.id))
+        .map(|e| e.id)
+        .collect();
+    if doomed.is_empty() {
+        return Vec::new();
+    }
+    list.iter()
+        .filter(|e| doomed.contains(&e.id))
+        .filter(|e| {
+            // 祖先也在这批里 → 交给祖先收，自己不再单独回调。
+            chain(list, e.id)
+                .iter()
+                .all(|a| *a == e.id || !doomed.contains(a))
+        })
+        .map(|e| e.on_dismiss)
+        .collect()
+}
+
+/// 归还焦点之前的最后一问：焦点是不是已经被别处接住。
+///
+/// 判定必须在**真正要 focus 的那一帧**做，而且要看 DOM 而不是看栈：
+/// 被仲裁关掉的那一层，新层早已入栈，但焦点有没有搬进去要到下一帧才知道。
+/// 自己的面板此时通常已经 `display:none`，浏览器把焦点丢回 body —— 那才算「空着」。
+///
+/// `own` 给不出（面板已卸载）时按「空着」处理：那是升级前的老行为，不能因为
+/// 拿不到面板就把焦点永久丢掉。
+pub(crate) fn focus_is_free(own: Option<&web_sys::Node>) -> bool {
+    let Some(own) = own else {
+        return true;
+    };
+    let Some(active) = active_element() else {
+        return true;
+    };
+    let tag = active.tag_name();
+    if tag.eq_ignore_ascii_case("body") || tag.eq_ignore_ascii_case("html") {
+        return true;
+    }
+    // 焦点还在自己面板里（含面板本身）→ 可以还给触发器；已经在别处 → 别碰。
+    own.contains(Some(active.unchecked_ref()))
 }
 
 /// 文档级 keydown：Esc 只关最上层，Tab 在模态容器内循环。

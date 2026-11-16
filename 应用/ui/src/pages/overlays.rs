@@ -127,6 +127,10 @@ pub fn OverlayPage() -> impl IntoView {
                             <span class="c-subtitle">
                                 "第二个按钮套 data-glass=\"menu-240x280\"：宽 240、高 280，项多了在菜单内部滚动。"
                             </span>
+                            <span class="c-subtitle">
+                                "同 rank 单开：开着「文件」再去开另一个菜单，「文件」自动收起、焦点跟到新菜单；"
+                                "而「文件 → 最近打开」这种子菜单不会把父菜单收掉（靠 lineage 区分父子与无关浮层）。"
+                            </span>
                         </div>
                     </Card>
                 </div>

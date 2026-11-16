@@ -9,8 +9,8 @@ use wasm_bindgen::{JsCast, JsValue};
 
 use crate::base::anchor::{self, AnchorSpec, AnchorWatch, Placement, Side};
 use crate::base::overlay::{
-    active_element, first_focusable, listen_document, listen_window, schedule, GlobalListener,
-    OverlayHost, OverlayId, OverlayKind,
+    active_element, first_focusable, focus_is_free, listen_document, listen_window, schedule,
+    GlobalListener, OverlayHost, OverlayId, OverlayKind,
 };
 
 /// 贴边安全距离：与菜单共用同一套几何约定（8px），窗口圆角不会切掉面板。
@@ -451,7 +451,10 @@ pub fn Popover(
             if restore.get_value() {
                 if let Some(el) = return_to.get_value() {
                     schedule(move || {
-                        if el.is_connected() {
+                        // 焦点已经被别处接住（同 rank 仲裁换了另一个浮层上来）就别抢：
+                        // 抢回来会让新面板里的键盘操作全部失效。
+                        let own = panel_ref.get().map(|p| p.unchecked_into::<web_sys::Node>());
+                        if el.is_connected() && focus_is_free(own.as_ref()) {
                             let _ = el.focus();
                         }
                     });

@@ -12,8 +12,8 @@ use crate::base::anchor::{self, AnchorSpec, AnchorWatch, Placement, Side};
 use crate::base::icon::{Icon, IconName};
 use crate::base::id::next_id;
 use crate::base::overlay::{
-    active_element, listen_document, listen_window, schedule, GlobalListener, OverlayHost,
-    OverlayId, OverlayKind,
+    active_element, focus_is_free, listen_document, listen_window, schedule, GlobalListener,
+    OverlayHost, OverlayId, OverlayKind,
 };
 
 /// 与触发器之间的固定间距。属于「定位几何」，不是视觉令牌：
@@ -428,6 +428,9 @@ fn activate(ctx: MenuCtx, item: &web_sys::HtmlElement) {
 /// （深度天然由栈给出，Esc 也天然逐层）。不能嵌进父面板：`.c-menu` 带 backdrop-filter 与
 /// overflow:hidden，它既是 fixed 的包含块又会裁切，嵌进去的子菜单一定被切掉。
 ///
+/// `parent_layer` 是**上一层**的 OverlayId：子菜单靠它声明 lineage，浮层栈才不会把
+/// 父菜单当成「无关浮层」一起收掉。根菜单传 `None`。
+///
 /// 宽度一律交给内容（CSS `min-width:180px` 或玻璃档）。
 #[allow(clippy::too_many_arguments)]
 fn build_panel(
@@ -440,6 +443,7 @@ fn build_panel(
     panel_ref: NodeRef<html::Div>,
     glass: Option<&'static str>,
     label: String,
+    parent_layer: Option<RwSignal<Option<OverlayId>>>,
 ) -> AnyView {
     let layer = RwSignal::new(None::<OverlayId>);
     let host = ctx.host;
@@ -696,11 +700,16 @@ fn build_panel(
 
     // 入栈/出栈跟着本层可见性走。Esc 由 OverlayHost 派发到栈顶 ——
     // 子菜单是后入栈的，所以第一次 Esc 只收子菜单。
+    //
+    // 父层 id 在这里**只读一次**（untracked）：它晚于本层 effect 被写入是常态
+    // （根菜单的 id 在自己的 effect 里才有），但不能因此让本层 effect 重跑。
     Effect::new(move |_| {
         if visible.get() {
             if layer.get_untracked().is_none() {
-                let id = host.push(
+                let parent = parent_layer.and_then(|p| p.get_untracked());
+                let id = host.push_child(
                     OverlayKind::Menu,
+                    parent,
                     Callback::new(move |_| set_visible.run(false)),
                 );
                 layer.set(Some(id));
@@ -773,6 +782,8 @@ fn build_panel(
             link.panel,
             None,
             item.label.clone(),
+            // 下一层挂在**本层**下面：这样它入栈时不会把本层请出。
+            Some(layer),
         );
         parts.push(child);
 
@@ -938,6 +949,8 @@ fn menu_core(
         panel_ref,
         glass,
         label,
+        // 根菜单是独立浮层：入栈时会请出别的菜单（同 rank 仲裁）。
+        None,
     );
 
     Effect::new(move |_| {
@@ -1037,13 +1050,16 @@ fn menu_core(
         } else {
             outside.set_value(None);
             watch.set_value(None);
-            // 归还焦点：只有「这次关闭该还」且焦点确实落在菜单里才动。
+            // 归还焦点：只有「这次关闭该还」且焦点没被别人接住才动。
             // 用标志位而不是查 activeElement —— 此刻面板可能已经被 display:none，
             // 浏览器已经把焦点丢回 body，查 DOM 永远得到「不在里面」。
+            // 但「焦点是不是已经在别的菜单里」必须查 DOM：同 rank 仲裁关掉本层时，
+            // 新菜单会在同一帧把焦点搬进自己，再把焦点抢回来就等于让键盘失效。
             if restore.get_value() {
                 if let Some(el) = return_to.get_value() {
                     schedule(move || {
-                        if el.is_connected() {
+                        let own = panel_ref.get().map(|p| p.unchecked_into::<web_sys::Node>());
+                        if el.is_connected() && focus_is_free(own.as_ref()) {
                             let _ = el.focus();
                         }
                     });
