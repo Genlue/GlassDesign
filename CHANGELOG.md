@@ -4,6 +4,24 @@
 
 规则：新增 prop / 组件 = minor；改 props 形状、删组件、改 DOM 或键盘契约、改贴图尺寸 = major；CSS 变量改名先加别名再删。
 
+## [0.8.3] - 2026-11-17
+
+修一个 0.8.1 引入的回归：滑块拇指和进度条脱节。
+
+### Fixed
+
+- **拇指跑到填充前面，点击还会多跳一段**。0.8.1 为了修「拖拽一顿一顿」，
+  把位移从 `transform` 拆到了独立的 `translate` 属性。问题在于库里本来就叠着两套定位：
+  `04-slider.css` 用 `translate: calc(var(--travel) * var(--p))`（`--travel` 由 JS 量出来），
+  `64-slider-leptos.css` 又用 `left: calc(... + (100% - thumb-w) * p)` 覆盖。
+  后者当年能生效，纯粹是因为它的 `transform: scale()` 把前者的 `translateX` **整条盖掉**了；
+  位移一旦搬到独立属性，覆盖就管不住它 —— `left` 和 `translate` 各推一次，
+  拇指领先填充 `100px × p`，点一下再额外跳 `100px × Δp`。
+
+  收口成一条公式：位移只写在 `left` 的百分比表达式里（与 `.c-slider__fill` 的
+  `100% * var(--p)` 同一参照），`transform` 只留缩放；`--travel` 和
+  `64-slider-leptos.css` 一并删除。
+
 ## [0.8.2] - 2026-11-17
 
 只动打包形态，代码零变化。

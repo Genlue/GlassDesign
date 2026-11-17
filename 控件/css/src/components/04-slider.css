@@ -9,7 +9,6 @@
 
 .c-slider {
   --p: 0;
-  --travel: 100px;
   /* 拇指长宽比固定 3:2，宽度由高度推出来 —— 常规滑块和有级滑块共用同一个比例，
      不会再出现 28×16（1.75）和 36×18（2.0）两种长宽比。改大小只改 --thumb-h。 */
   --thumb-h: 16px;
@@ -90,7 +89,17 @@
      兜底写在 var() 的第二个参数里（见 transform）。 */
   position: absolute;
   top: 50%;
-  left: calc(var(--thumb-w) / 2);
+  /* 位置只有这一处：轨道左缘（= 拇指宽的一半）+ 轨道宽 × p。
+     轨道宽是 `100% - --thumb-w`（见 .c-slider__track 的左右内缩），
+     和进度条 `.c-slider__fill` 的 `100% * var(--p)` 同一个参照 —— 两者必须共用
+     一条公式，否则拇指会和填充脱节。
+
+     这里**不要**再叠加 `translate`。曾经位移走 `translate`（`--travel` × p），
+     由 JS 量出轨道宽度写进 `--travel`；后来改成纯 CSS 百分比后，
+     `64-slider-leptos.css` 用一条 `transform: scale()` 覆盖掉了旧的 `translateX`，
+     才没露馅。把位移拆到独立的 `translate` 属性后，那条覆盖就管不住它了，
+     于是 left 和 translate 各推一次，拇指跑到填充前面一大截 —— 别走回头路。 */
+  left: calc(var(--thumb-w) / 2 + (100% - var(--thumb-w)) * var(--p));
   width: var(--thumb-w);
   height: var(--thumb-h);
   margin-top: calc(var(--thumb-h) / -2);
@@ -137,8 +146,7 @@
     saturate(calc(var(--lg-vibrancy) * 100%));
   /* 过渡的是「模糊半径」这个变量，不是 backdrop-filter 本身 ——
      滤镜列表里带 url() 时不可插值，直接过渡 backdrop-filter 会变成硬切。
-     transform 同样要过渡，否则 --thumb-s 一变就是硬跳（按下/松手的动画就没了）。
-     注意它只承载**缩放**：位移在下面的 `translate` 属性里，那条绝不能过渡。 */
+     transform 只承载**缩放**（按下/松手的弹簧），位移在 left 里，不参与过渡。 */
   transition:
     transform var(--thumb-press-out),
     --thumb-blur-px var(--thumb-fade-in);
@@ -154,14 +162,11 @@
     inset 0 1px 0 rgb(255 255 255 / calc(0.95 * var(--lg-css-stroke-alpha, var(--lg-stroke-alpha)))),
     inset 0 -1px 0 rgb(255 255 255 / calc(0.95 * var(--lg-css-stroke-alpha, var(--lg-stroke-alpha)) * var(--hl-bottom))),
     inset 0 -1px 2px rgb(0 0 0 / calc(0.12 * var(--shadow-k)));
-  /* 位置走 `translate`、缩放走 `transform` —— 这是两个独立属性，缺一不可：
-     合在 `transform` 里时，那条 200ms 的按压过渡会把拖拽位移一起缓动。
-     拖拽时 `--p` 每帧都在变，等于每帧重起一次过渡（还带 1.12 的回弹曲线），
-     拇指永远落后于指针、松手才追上，看起来就是一卡一卡。
-     拆开之后：位移当帧生效，缩放照旧有动画。 */
-  translate: calc(var(--travel) * var(--p)) 0;
+  /* 位置由上面的 `left` 百分比表达式负责，这里只做缩放。
+     缩放留在 transform 上才有过渡；位移不放进 transform 是因为那条
+     200ms 的按压过渡会连位移一起缓动（拖拽时每帧重起一次，拇指追不上指针）。 */
   transform: scale(var(--thumb-s, 1));
-  will-change: translate, transform;
+  will-change: transform;
 }
 
 /* 交互膜：只负责按压时的白色反光，不再承担基础涂层。
