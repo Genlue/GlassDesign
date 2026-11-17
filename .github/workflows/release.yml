@@ -1,0 +1,44 @@
+name: Release
+
+# 只做一件事：把 glass-design 传到 crates.io。
+# 前置：仓库 Settings → Secrets and variables → Actions 里加 CARGO_REGISTRY_TOKEN
+#       （crates.io → Account Settings → API Tokens，权限选 publish-new + publish-update）。
+# 没有 secret 时第一步就会明确失败，不会静默跳过。
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  publish:
+    name: cargo publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 检查 token
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::error::缺 CARGO_REGISTRY_TOKEN。到 Settings → Secrets → Actions 添加后再跑。"
+            exit 1
+          fi
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      # 发布前把 CI 那几道关再跑一遍：传上去的版本不可撤回，只能 yank。
+      - name: 单测
+        run: cargo test -p glass-design --lib
+
+      - name: wasm 编译
+        run: cargo check -p glass-design --target wasm32-unknown-unknown
+
+      - name: 发布
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish -p glass-design
