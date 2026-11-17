@@ -7,7 +7,9 @@ Tauri 2 + Leptos 0.8（CSR）的桌面控件库。104 个公开组件，一个 `
 ## 1. 一行接入
 
 ```sh
-cargo add glass-design leptos wasm-bindgen
+cargo add glass-design --git https://github.com/Genlue/GlassDesign --tag v0.8.0
+cargo add leptos --features csr
+cargo add wasm-bindgen
 ```
 
 ```rust
@@ -31,6 +33,8 @@ re-export 仍然有用：`Signal` / `Callback` 这类 props 类型需要版本�
 ## 2. 四种用法
 
 下面三段只演示 `glass-design` 这一行怎么写；`leptos` 与 `wasm-bindgen` 按 §1 一起加，三种方式都一样。
+
+**当前未发布到 crates.io**：自己的项目用 2.2 的 git tag 即可，实测能从仓库里解析到 `控件/` 这个 workspace 成员。2.1 只是留作将来对外发布的写法。完整接入步骤见仓库 [`docs/05-接入手册.md`](../docs/05-接入手册.md)。
 
 ### 2.1 crates.io
 

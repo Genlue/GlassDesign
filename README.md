@@ -1,6 +1,6 @@
 # GlassDesign
 
-Windows 桌面界面库：**Tauri 2 + Rust + Leptos（CSR）+ 构建期预计算的液态玻璃**。可作为 crates.io 依赖引入（`cargo add glass-design leptos wasm-bindgen`，三个都要，原因见 [`控件/README.md` §1](控件/README.md)），也可以整个仓库当作参考实现。
+Windows 桌面界面库：**Tauri 2 + Rust + Leptos（CSR）+ 构建期预计算的液态玻璃**。仓库本身即可作为依赖源，用 git tag 声明引用（写法见 [`docs/05-接入手册.md`](docs/05-接入手册.md)）；也可以整个仓库当作参考实现。
 
 界面用 `view!` 拼，运行时不碰 DOM、不碰测量、不注入 JavaScript。玻璃的模糊与折射全部在构建期算成静态 SVG filter，运行期只剩一条 `backdrop-filter`。
 
@@ -106,7 +106,9 @@ install() ──▶ <style id="gd-styles"> + <div id="gd-glass-defs">
 ## 作为依赖使用
 
 ```sh
-cargo add glass-design leptos wasm-bindgen
+cargo add glass-design --git https://github.com/Genlue/GlassDesign --tag v0.8.0
+cargo add leptos --features csr
+cargo add wasm-bindgen
 ```
 
 ```rust
@@ -117,7 +119,9 @@ use glass_design::prelude::*;
 pub fn start() { bootstrap(App); }
 ```
 
-三个依赖都要写在应用里：`#[component]` / `view!` 展开成 `::leptos::…` 绝对路径，re-export 替代不了声明。库 re-export 只用于统一 props 类型与版本。四种接入方式（crates.io / git tag / path / 纯 HTML）、`embedded` 开关、主题令牌与图标扩展，见 [`控件/README.md`](控件/README.md)。
+三个依赖都要写在应用里：`#[component]` / `view!` 展开成 `::leptos::…` 绝对路径，re-export 替代不了声明。库 re-export 只用于统一 props 类型与版本。
+
+**完整接入步骤、页面骨架、材质档位、宿主接线与排障，看 [`docs/05-接入手册.md`](docs/05-接入手册.md)**——那份文档是自包含的，可以直接发给新会话。其他写法（path / 纯 HTML）、`embedded` 开关、主题令牌与图标扩展，见 [`控件/README.md`](控件/README.md)。
 
 ---
 
@@ -128,8 +132,9 @@ pub fn start() { bootstrap(App); }
 | [`docs/01-架构.md`](docs/01-架构.md) | 七条链怎么咬合：材质 / 主题 / 浮层 / 虚拟化 / 焦点 / 状态 / 文案 |
 | [`docs/02-组件契约.md`](docs/02-组件契约.md) | 对外承诺什么：props、受控、插槽、浮层、主题、材质档、104 个组件与各自边界 |
 | [`docs/03-构建与验证.md`](docs/03-构建与验证.md) | 怎么构建、产物是什么、怎么验证没弄坏、出问题查哪里 |
-| [`docs/04-作为库分发.md`](docs/04-作为库分发.md) | 发布前查什么、`cargo publish --dry-run`、semver 与 0.x 双版本共存风险 |
-| [`控件/README.md`](控件/README.md) | 把库当依赖引入怎么用 |
+| [`docs/04-作为库分发.md`](docs/04-作为库分发.md) | 维护者向：将来真要对外发布时的流程、semver 与 0.x 双版本共存风险（当前未发布，不必看） |
+| [`docs/05-接入手册.md`](docs/05-接入手册.md) | **新会话先读这份**：从零接入、页面骨架、材质档位、宿主接线、排障，自包含 |
+| [`控件/README.md`](控件/README.md) | 库的四种引用方式与 API 概览 |
 
 ---
 
