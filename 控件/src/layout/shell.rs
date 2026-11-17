@@ -1,6 +1,7 @@
 use leptos::prelude::*;
 
 use crate::base::icon::{Icon, IconName};
+use crate::base::scrollbar;
 use crate::base::overlay::OverlayHost;
 use crate::widgets::toast::ToastHost;
 
@@ -39,18 +40,32 @@ pub fn Main(children: Children) -> impl IntoView {
 }
 
 /// 滚动舞台。内容超出一屏时在这里滚。
+///
+/// 挂载时自动换成覆盖式滚动条（原生滚动条会占 16px 布局宽度，
+/// 而且它的「悬停浮现」在 Chromium 里根本不成立，见 `base::scrollbar`）。
 #[component]
 pub fn ScrollArea(children: Children) -> impl IntoView {
-    view! { <div class="l-stage">{children()}</div> }
+    let stage = NodeRef::<leptos::html::Div>::new();
+    Effect::new(move |_| {
+        let Some(el) = stage.get() else { return };
+        scrollbar::enhance(el.into());
+    });
+    view! { <div class="l-stage" node_ref=stage>{children()}</div> }
 }
 
 /// 侧边导航栏（窗格材质，不是玻璃）。
 #[component]
 pub fn NavColumn(children: Children) -> impl IntoView {
+    let body = NodeRef::<leptos::html::Div>::new();
+    Effect::new(move |_| {
+        let Some(el) = body.get() else { return };
+        // 覆盖层挂在 `.l-nav` 上，再由 scrollbar 补上 head 那一行的纵向偏移
+        scrollbar::enhance(el.into());
+    });
     view! {
         <aside class="l-nav c-pane" aria-label="导航栏">
             <div class="l-nav__head"></div>
-            <div class="l-nav__body">{children()}</div>
+            <div class="l-nav__body" node_ref=body>{children()}</div>
             <div class="c-topveil c-topveil--nav" data-on="0"></div>
         </aside>
     }

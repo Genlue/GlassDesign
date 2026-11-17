@@ -137,7 +137,8 @@
     saturate(calc(var(--lg-vibrancy) * 100%));
   /* 过渡的是「模糊半径」这个变量，不是 backdrop-filter 本身 ——
      滤镜列表里带 url() 时不可插值，直接过渡 backdrop-filter 会变成硬切。
-     transform 同样要过渡，否则 --thumb-s 一变就是硬跳（按下/松手的动画就没了）。 */
+     transform 同样要过渡，否则 --thumb-s 一变就是硬跳（按下/松手的动画就没了）。
+     注意它只承载**缩放**：位移在下面的 `translate` 属性里，那条绝不能过渡。 */
   transition:
     transform var(--thumb-press-out),
     --thumb-blur-px var(--thumb-fade-in);
@@ -153,8 +154,14 @@
     inset 0 1px 0 rgb(255 255 255 / calc(0.95 * var(--lg-css-stroke-alpha, var(--lg-stroke-alpha)))),
     inset 0 -1px 0 rgb(255 255 255 / calc(0.95 * var(--lg-css-stroke-alpha, var(--lg-stroke-alpha)) * var(--hl-bottom))),
     inset 0 -1px 2px rgb(0 0 0 / calc(0.12 * var(--shadow-k)));
-  transform: translateX(calc(var(--travel) * var(--p))) scale(var(--thumb-s, 1));
-  will-change: transform;
+  /* 位置走 `translate`、缩放走 `transform` —— 这是两个独立属性，缺一不可：
+     合在 `transform` 里时，那条 200ms 的按压过渡会把拖拽位移一起缓动。
+     拖拽时 `--p` 每帧都在变，等于每帧重起一次过渡（还带 1.12 的回弹曲线），
+     拇指永远落后于指针、松手才追上，看起来就是一卡一卡。
+     拆开之后：位移当帧生效，缩放照旧有动画。 */
+  translate: calc(var(--travel) * var(--p)) 0;
+  transform: scale(var(--thumb-s, 1));
+  will-change: translate, transform;
 }
 
 /* 交互膜：只负责按压时的白色反光，不再承担基础涂层。

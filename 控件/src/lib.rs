@@ -26,6 +26,7 @@ pub mod prelude {
         glass_defs_svg, install, install_with, styles_css, InstallConfig, InstallReport, VERSION,
     };
     pub use crate::base::overlay::{OverlayHost, OverlayId, OverlayKind, Z_TOAST};
+    pub use crate::base::scrollbar::{attach as attach_scrollbar, ScrollbarHandle};
     pub use crate::base::theme::{Theme, ThemeMode};
     pub use crate::base::types::Size;
 

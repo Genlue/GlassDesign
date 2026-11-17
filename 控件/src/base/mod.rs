@@ -5,6 +5,7 @@ pub mod i18n;
 pub mod id;
 pub mod install;
 pub mod overlay;
+pub mod scrollbar;
 pub mod theme;
 pub mod types;
 pub mod virtual_window;

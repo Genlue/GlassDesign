@@ -4,6 +4,10 @@
 //! 只能采窗口内的像素 —— 窗口外的桌面它看不到。所以宿主必须先把窗口背后那块
 //! 屏幕截成 PNG data URL，前端铺在 `#wallpaper` 上当材质输入，玻璃再折它。
 //!
+//! **取舍**：为了不把窗口自己截进「桌面快照」，`install()` 会给窗口挂
+//! `WDA_EXCLUDEFROMCAPTURE` —— 副作用是系统截图、录屏、任务栏预览都拍不到它。
+//! 需要被截图的应用用 [`install_with`] + `HostOptions { exclude_from_capture: false }`。
+//!
 //! 接入只需要两步：
 //! 1. `.invoke_handler(glass_design_host::handlers!())` + `glass_design_host::install(app.handle())`
 //! 2. 把 [`WALLPAPER_JS`] 同步成 `dist/wallpaper.js`（见 `scripts/sync-host-assets.mjs`）
@@ -49,12 +53,48 @@ mod command {
 
 pub use command::capture_backdrop;
 
+/// 宿主装配的开关。
+#[derive(Debug, Clone, Copy)]
+pub struct HostOptions {
+    /// 给窗口挂 `WDA_EXCLUDEFROMCAPTURE`。默认 `true`。
+    ///
+    /// **这是有代价的**：那个 API 的语义是「让这个窗口不被任何截屏接口拍到」，
+    /// 于是系统截图、录屏、任务栏与 Alt-Tab 的窗口预览也一并失效。
+    /// 不挂的话，`capture_backdrop` 截到的桌面里会包含窗口自己，玻璃折出镜中镜。
+    ///
+    /// 二选一：
+    /// - 界面本身就是主体、用户可能想截图（相册、笔记、阅读器）→ `false`，
+    ///   同时别引 `wallpaper.js`，让壁纸退回 `tokens.css` 的合成背景；
+    /// - 只要玻璃效果、不介意拍不到 → `true`（默认）。
+    pub exclude_from_capture: bool,
+}
+
+impl Default for HostOptions {
+    fn default() -> Self {
+        Self {
+            exclude_from_capture: true,
+        }
+    }
+}
+
 /// 给窗口挂 `WDA_EXCLUDEFROMCAPTURE`：截屏前必须先挂，否则截到的桌面里包含自己。
+///
+/// 等同于 `install_with(app, HostOptions::default())`。
+/// 需要让应用能被系统截图的，改用 `install_with(app, HostOptions { exclude_from_capture: false })`。
 #[cfg(windows)]
 pub fn install(app: &tauri::AppHandle) -> Result<(), String> {
+    install_with(app, HostOptions::default())
+}
+
+/// 同 [`install`]，但可以关掉「排除截屏」。
+#[cfg(windows)]
+pub fn install_with(app: &tauri::AppHandle, opts: HostOptions) -> Result<(), String> {
     use tauri::Manager;
     use windows::Win32::Foundation::HWND;
 
+    if !opts.exclude_from_capture {
+        return Ok(());
+    }
     // 找不到 main 窗口不算致命：原实现同样是静默跳过，应用照常启动。
     if let Some(win) = app.get_webview_window("main") {
         if let Ok(hwnd) = win.hwnd() {
@@ -68,6 +108,12 @@ pub fn install(app: &tauri::AppHandle) -> Result<(), String> {
 /// 非 Windows 目标：没有这个 API，空实现即可。
 #[cfg(not(windows))]
 pub fn install(_app: &tauri::AppHandle) -> Result<(), String> {
+    Ok(())
+}
+
+/// 非 Windows 目标：同上。
+#[cfg(not(windows))]
+pub fn install_with(_app: &tauri::AppHandle, _opts: HostOptions) -> Result<(), String> {
     Ok(())
 }
 

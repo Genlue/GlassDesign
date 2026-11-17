@@ -4,6 +4,28 @@
 
 规则：新增 prop / 组件 = minor；改 props 形状、删组件、改 DOM 或键盘契约、改贴图尺寸 = major；CSS 变量改名先加别名再删。
 
+## [0.8.1] - 2026-11-17
+
+三处「文档写了、代码没做到」的收口，外加一个 API 缺口。全部向后兼容。
+
+### Added
+
+- **`base::scrollbar`**：覆盖式滚动条的驱动。`base.css` 里 `.c-scroller` / `.c-overlay-scroll` 的样式从 0.8.0 起就在，注释也写着「由 scrollbar.js 接管」—— 但那个脚本从来没被写出来，样式是死的。现在由 Rust 接管：原生宽度归零、拇指自绘、指针进入容器即浮现、可拖动、内容变高自动重算、组件卸载时摘监听与定时器。
+- **`ScrollArea` / `NavColumn` 自动挂覆盖式滚动条**，使用方不用额外调用。
+- **`Row` 新增 `wide` prop**：控件槽吃掉剩余宽度。滑块、输入框这类长控件放进默认槽（`flex: none`）会被压成一条。
+- **`glass-design-host`：`HostOptions` / `install_with`**：可以关掉 `WDA_EXCLUDEFROMCAPTURE`。
+
+### Fixed
+
+- **滚动条拇指必须被精确压住才看得见**：`*:hover::-webkit-scrollbar-thumb` 在 Chromium 里只解析成「拇指自身被悬停」，指针在内容区或轨道空白处都不触发。
+- **滚动条占 16px 布局宽度**：内容列被挤窄 16px，左右内边距对不上。改用覆盖式后 `offsetWidth == clientWidth`。
+- **滑块拖拽一顿一顿**：`.c-slider__thumb` 的 `transform` 同时承载「按下缩放」和「拖拽位移」，那条 200ms 过渡把位移也一起缓动了 —— 拖拽时 `--p` 每帧都变，等于每帧重起一次过渡，拇指永远追不上指针。位移改走 `translate` 属性、缩放留在 `transform`，两者独立。
+- **`install()` 让应用拍不到**：`WDA_EXCLUDEFROMCAPTURE` 的语义是「这个窗口不被任何截屏接口拍到」，系统截图 / 录屏 / 任务栏预览一并失效。默认行为不变，新增 `install_with` 供需要被截图的应用关掉。
+
+### 已知限制
+
+- 覆盖式滚动条依赖 `translate` 属性（Chromium 104+ / Safari 14.1+）。更老的引擎会退回原位、不动 —— 但那时原生滚动条也被 `scrollbar-width: none` 关掉了，等于没有滚动条。库只承诺 WebView2，这条在承诺范围内。
+
 ## [0.8.0] - 2026-11-17
 
 从「拷一个文件夹」变成「加一行依赖」。这一版的重点不是新控件，是让库能被 `cargo add` 进来、被 CI 验证、被 `cargo-generate` 起项目。
