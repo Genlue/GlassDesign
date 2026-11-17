@@ -5,12 +5,31 @@ use crate::base::overlay::OverlayHost;
 use crate::widgets::toast::ToastHost;
 
 /// 应用外壳。`.l-app` 负责圆角、外影与两栏布局。
+///
+/// `nav_hidden` 是**外壳状态**而不是导航栏自己的状态：收起时变的不只是
+/// `.l-nav` 的 transform，还有内容列的 margin-left 与顶栏按钮的落点，
+/// 三处都得在 `.l-app` 上读同一个类（`.l-app--nav-hidden`）。
 #[component]
-pub fn AppShell(children: Children) -> impl IntoView {
+pub fn AppShell(
+    #[prop(into, optional)] nav_hidden: MaybeProp<bool>,
+    #[prop(into, optional)] class: String,
+    children: Children,
+) -> impl IntoView {
     // 浮层栈在根上 provide 一次：所有页面的 Dialog/Select 共用一条栈，
     // 否则各自 use_or_provide 会拿到互不相见的两个 host。不产生 DOM。
     let _host = OverlayHost::use_or_provide();
-    view! { <div class="l-app">{children()}<ToastHost /></div> }
+    let cls = move || {
+        let mut c = String::from("l-app");
+        if !class.is_empty() {
+            c.push(' ');
+            c.push_str(&class);
+        }
+        if nav_hidden.get().unwrap_or(false) {
+            c.push_str(" l-app--nav-hidden");
+        }
+        c
+    };
+    view! { <div class=cls>{children()}<ToastHost /></div> }
 }
 
 /// 主内容列（顶栏之下）。

@@ -46,7 +46,16 @@ ${consts}
 }
 
 impl IconName {
+    /// 业务图标：直接给 24 视框的 path/circle/rect 片段（不含 <svg> 外壳）。
+    pub const fn custom(markup: &'static str) -> Self {
+        Self(markup)
+    }
+
     pub fn path(self) -> &'static str {
+        // 自定义图标就是标记本身；内置图标是 key，走下面那张表。
+        if self.0.starts_with('<') {
+            return self.0;
+        }
         match self.0 {
 ${arms}
             _ => "",

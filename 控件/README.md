@@ -1,148 +1,237 @@
-# `控件/` · 唯一复制单元
+# glass-design
 
-这个文件夹整个拷进别的项目就能用；升级时用新文件夹覆盖它。
+Tauri 2 + Leptos 0.8（CSR）的桌面控件库。104 个公开组件，一个 `prelude` 出口。
 
-> **P3 已收口。** 现在有 `Cargo.toml`、`src/`、`css/`、`assets/`，88 个组件可以编译、可以拼画廊。
-> 材质改为**构建期预计算贴图 + 静态 SVG filter**，运行时没有 JavaScript。
+样式（331 KB CSS）与玻璃贴图（134 KB SVG）用 `include_str!` 编进 wasm，由 `install()` 注入。不需要构建脚本，不需要额外拷贝资源目录。
 
----
+## 1. 一行接入
 
-## 1. 为什么是一个文件夹
-
-旧库的复制方式是“拷 `styles/` + 拷 `scripts/` + 改 import 路径”，三处散落，升级时容易漏。新库把它收成一个 crate：
-
-```text
-控件/
-├── Cargo.toml            glass-design
-├── README.md             本文件
-├── src/                  Rust 组件
-├── css/                  tokens / optics / base / layout / components(64)
-└── assets/glass-defs.svg 预计算位移/高光贴图 + 静态 filter
+```sh
+cargo add glass-design leptos wasm-bindgen
 ```
 
-样式与静态 SVG 都用 `include_str!` 编进 crate，运行时由 `install()` 注入。**复制一个文件夹就够，不需要再拷第二处资源。**
+```rust
+use leptos::prelude::*;               // view! 与 #[component]
+use glass_design::prelude::*;         // 组件 + bootstrap
 
----
+#[wasm_bindgen::prelude::wasm_bindgen(start)]
+pub fn start() {
+    bootstrap(|| view! { <Card><SectionTitle>"你好"</SectionTitle></Card> });
+}
+```
 
-## 2. 三种用法
+`bootstrap` 已经把 `install()`、`Theme::provide()`、`OverlayHost` 和挂载一起做完。页面里不用再写 `<link>`，不用改 `tauri.conf.json`。
 
-### 2.1 Rust / Tauri 项目（推荐）
+三个依赖都得写。`#[component]` / `view!` 展开成 `::leptos::…`，`#[wasm_bindgen]` 展开成 `::wasm_bindgen::…`——都是绝对路径，指向**你这一层** crate 根的外部 crate。re-export 只多给一个 `glass_design::leptos` 路径，改不了宏里写死的 `::leptos`。
+
+re-export 仍然有用：`Signal` / `Callback` 这类 props 类型需要版本锚点，`glass_design::leptos` 在泛型与文档里也能直接引用。它不替代声明。
+
+应用里写 `leptos = "0.8"` 就行，别写 `=0.8.x` 精确锁：库用的是 caret，你锁死就会各拿一份 leptos，`Signal` 变成两个类型。
+
+## 2. 四种用法
+
+下面三段只演示 `glass-design` 这一行怎么写；`leptos` 与 `wasm-bindgen` 按 §1 一起加，三种方式都一样。
+
+### 2.1 crates.io
 
 ```toml
-# Cargo.toml
 [dependencies]
-glass-design = { path = "vendor/控件" }
+glass-design = "0.8"
+# + leptos = { version = "0.8", features = ["csr"] }
+# + wasm-bindgen = "0.2"        ← 都是宏展开需要的，见 §1
 ```
 
-```rust
-fn main() {
-    glass_design::install();
-    // Tauri 启动 + Leptos mount
-}
+### 2.2 git（按 tag 锁）
+
+```toml
+[dependencies]
+glass-design = { git = "https://github.com/<owner>/GlassDesign", tag = "v0.8.0" }
+# + leptos / wasm-bindgen，见 §1
 ```
 
-```rust
-use glass_design::prelude::*;
+tag 比分支可靠：分支会动，tag 不会。
 
-view! {
-    <Card>
-        <SectionTitle>"设置"</SectionTitle>
-        <Row label="启用">
-            <Switch checked=Signal::derive(move || enabled.get()) />
-        </Row>
-        <Capsule size=CapsuleSize::Md>
-            <span>"Liquid Glass"</span>
-        </Capsule>
-    </Card>
-}
+### 2.3 path（vendor 进仓库）
+
+```toml
+[dependencies]
+glass-design = { path = "vendor/glass-design" }
+# + leptos / wasm-bindgen，见 §1
 ```
 
-### 2.2 原生 HTML / JS 项目
+适合内网或不方便拉 crates.io 的项目。把发布包解开放进 `vendor/` 即可，`src/` + `css/glass.css` + `assets/glass-defs.svg` 就够。
 
-拷 `控件/css` 与 `控件/assets`：
+### 2.4 纯 HTML + CSS（不用 Rust）
+
+只想要外观时，引两份文件：
 
 ```html
-<link rel="stylesheet" href="./控件/css/glass.css">
-<!-- 放到 body 末尾：静态 filter 必须和页面在同一个文档里 -->
-<div hidden>/* 把 glass-defs.svg 的内容内联在这里 */</div>
+<link rel="stylesheet" href="./glass.css">
+<!-- 放进 body：静态 filter 必须和页面在同一个文档 -->
+<div hidden aria-hidden="true"><!-- glass-defs.svg 的内容原样贴进来 --></div>
 ```
 
-用同一套类名与 `data-size`，不需要 Rust，也不需要脚本。适合 Lumina 这类现有 Tauri + 原生 JS 项目。
+类名与 `data-size` 和 Rust 侧一致，不需要脚本。
 
-注意：`glass-defs.svg` 必须内联，不能 `<img src>`；`url(#id)` 解析不到外部 SVG 文档里的 filter。
+**`glass-defs.svg` 必须内联**，不能 `<img src>`：`url(#id)` 解析不到外部 SVG 文档里的 filter。
 
-### 2.3 旧 JS 项目
+## 3. 两层入口
 
-继续用 `Golden Gate HTML Design`。旧库冻结，不再加控件。
+| 你想要 | 用哪个 | 它做什么 |
+|---|---|---|
+| 什么都别管 | `bootstrap(App)` | `install()` + `Theme::provide()` + `OverlayHost` + `mount_to_body` |
+| 换主题 / 语言 / 不注入样式 | `bootstrap_with(App, BootstrapOptions { .. })` | 同上，参数可调 |
+| 自己的根节点里要放 `<GlassApp>` | `GlassApp` | 组件形式的同一层：注入 + 提供上下文 + 渲染 children |
+| 完全自己接管 | `install()` + `Theme::provide()` + `mount_to_body` | 三步自己排 |
 
----
+```rust
+pub struct BootstrapOptions {
+    pub install: bool,          // false：样式与贴图不注入，自己 <link>
+    pub theme: ThemeMode,       // Light / Dark / System
+    pub accent: &'static str,   // 强调色，写进 --accent
+    pub locale: Locale,         // 文案语言
+}
+```
 
-## 3. 复制
+`GlassApp` 与 `bootstrap` 的差别只有一处：`GlassApp` 要的是 `Children`，`bootstrap` 要的是返回 `IntoView` 的闭包。根组件捕获了 `Rc` 这类非 `Send` 值时用 `bootstrap`——`Children` 那一槽在 0.8 要求 `Send`。
 
-1. 把整个 `控件/` 拷到目标项目，例如 `vendor/控件`。
-2. `Cargo.toml` 加 path 依赖。
-3. `main()` 调一次 `install()`。
+## 4. 样式怎么进页面
 
-没有第四步。不需要改 `tauri.conf.json` 的资源表，不需要额外 `<link>`，不需要构建脚本。
+默认开 `embedded` feature：CSS 与 SVG 编进 wasm，`install()` 建一个 `<style id="gd-styles">` 塞进 `<head>`，再建 `<div id="gd-glass-defs">` 塞进 `<body>`。幂等，重复调用不会重复插入。
 
----
+关掉它：
 
-## 4. 替换（升级）
+```toml
+[dependencies]
+glass-design = { version = "0.8", default-features = false }
+```
 
-1. 用新版本覆盖 `vendor/控件/`。
-2. `cargo build`（path 依赖会自动重编）。
-3. 看 `控件/变更.md`：
-   - 同 major：应当零改动。
-   - major：按条目改调用方代码。
+这时 `STYLES` / `GLASS_DEFS` 是空字符串，`install()` 什么都不注入。前端自己来：
 
-`install()` 会把版本写到 `<html data-gd-version="x.y.z">`，页面页脚可显示，截图即证据。
+```html
+<link rel="stylesheet" href="/glass.css">
+<script type="module">
+  const defs = await (await fetch('/glass-defs.svg')).text();
+  document.body.insertAdjacentHTML('beforeend', `<div hidden>${defs}</div>`);
+</script>
+```
 
----
+两处文件从 crate 里取。构建期落盘，二选一：
 
-## 5. 硬规矩
+```rust
+// 开了 embedded：直接问库要
+std::fs::write("dist/glass.css", glass_design::styles_css()).unwrap();
+std::fs::write("dist/glass-defs.svg", glass_design::glass_defs_svg()).unwrap();
+```
 
-1. **不许 import 仓库里的 `应用/`、`scripts/`、`docs/`。** 这个文件夹必须能单独打包。
-2. **不许依赖运行期文件路径。** 样式、贴图、图标一律 `include_str!`。
-3. **不许出现第三个全局单例。** 只有 `OverlayHost` 与 `Theme` 两个 `thread_local`。
-4. **不许在 Rust 里写字面色值/px。** 新值先加到 `css/tokens.css`。
-5. **不许把 `leptos::` 类型暴露给调用方**（`Signal`/`Callback` 除外）。
-6. **不许改 DOM 契约而不改 major。** 类名、`data-*`、ARIA、键盘行为都算契约。
-7. **不许用一张贴图通吃所有尺寸。** 玻璃尺寸必须落在 `scripts/build-glass.mjs` 的档位表里；否则走 `Auto` 的纯 CSS 兜底。
+```sh
+# 关掉 embedded：发布包里就有这两份，拷出来即可
+cp vendor/glass-design/css/glass.css dist/
+cp vendor/glass-design/assets/glass-defs.svg dist/
+```
 
----
+`styles_css()` / `glass_defs_svg()` 返回 `&'static str`。
+
+收益：wasm 少 465 KB，首帧不用等 wasm 下载与实例化就能上样式。代价：多两个静态文件，且 `glass-defs.svg` 必须内联进文档。
+
+## 5. 扩展点
+
+### 5.1 自定义图标
+
+`IconName` 是常量表，内置 97 个。没有的图标用 `custom()`，给 24 视框里的 path 片段：
+
+```rust
+const LOGO: IconName = IconName::custom(
+    "M4 12a8 8 0 1 1 16 0 8 8 0 0 1-16 0Zm3 0h10M12 7v10",
+);
+
+view! { <Icon name=LOGO size=20 /> }
+```
+
+参数必须 `'static`：编译期就固定，运行期没有字符串查表。线宽由 `--ic-stroke` 控制，不要在 path 里写 `stroke-width`。
+
+### 5.2 主题令牌覆盖
+
+`Theme::set_token` 直接写 `<html>` 上的 CSS 变量，覆盖任意 `--*` 令牌：
+
+```rust
+let theme = Theme::provide();
+theme.set_accent("#6e56cf");              // 换强调色
+theme.set_token("--r-md", "10px");        // 中圆角改小
+theme.remove_token("--r-md");             // 撤掉，回到 tokens.css 的值
+```
+
+强调色走 `set_accent`：`Theme::apply()` 每次主题切换都会重写 `--accent` / `--accent-hover` / `--accent-soft` / `--accent-ring`，用 `set_token` 改单个变量会被冲掉，hover 与 ring 也还停在旧色。`set_token` 只用于 `apply()` 不管的令牌：圆角、字号、字体、间距。
+
+令牌清单见 `css/src/tokens.css`。不要覆盖组件内部的计算变量（如 `--thumb-s`），那是组件自己写的。
+
+### 5.3 布局原语
+
+十个组件包住 `.l-*` 空间类，页面里不写 `display:flex` / `gap` / `padding`：
+
+| 组件 | 类 | 用途 |
+|---|---|---|
+| `Stack` | `l-stack` | 纵向堆叠；`fill` 在父级 flex 里吃掉剩余空间 |
+| `Cluster` | `l-row` | 横排、垂直居中；`between` 两端顶开，`end` 靠右 |
+| `Grid` | `l-grid` | 网格，列与间隙走令牌 |
+| `Page` | `l-page` | 整页容器，自带裁剪与滚动边界 |
+| `PageInset` | `l-page-inset` | 给被顶栏压住的那一行让位（与 `Stage` 二选一） |
+| `Stage` | `l-stage` | 主内容舞台，绝对定位铺满并处理过度滚动；`flush` 撤掉顶部留白 |
+| `Center` | `l-center` | 横纵居中（空态、加载态） |
+| `Push` | `l-push` | 撑开的空节点，把后面的东西推右 |
+| `Fill` | `l-fill` | 吃掉剩余空间，且 `min-width: 0` |
+| `Pad` | `l-pad` | 内容边距；`wide` 是更松的一档 |
+
+```rust
+view! {
+    <Page>
+        <Pad>
+            <Stack>
+                <Cluster between=true>
+                    <SectionTitle>"设置"</SectionTitle>
+                    <Button label="保存" />
+                </Cluster>
+                <Divider />
+            </Stack>
+        </Pad>
+    </Page>
+}
+```
 
 ## 6. 玻璃尺寸档
 
-| 档位 | 尺寸 | CSS | 说明 |
-|---|---|---|---|
-| `CapsuleSize::Round` | 34 × 34 | `.c-capsule--round` | 顶栏圆钮 |
-| `CapsuleSize::Sm` | 112 × 34 | `data-size="112"` | 短胶囊 |
-| `CapsuleSize::Md` | 180 × 34 | `data-size="180"` | 长胶囊 |
-| `CapsuleSize::Auto` | 自适应 | 无 | 不套 SVG filter，只走 CSS |
+| 档位 | 尺寸 | 用在哪 |
+|---|---|---|
+| `CapsuleSize::Round` | 34 × 34 | 只装一枚图标按钮 |
+| `CapsuleSize::Sm` | 112 × 34 | 定宽短胶囊 |
+| `CapsuleSize::Md` | 180 × 34 | 定宽长胶囊 |
+| `CapsuleSize::Auto` | 自适应 | 宽度跟内容走，纯 CSS 涂层（无位移折射） |
+| 滑块拇指 | 24 × 16 | `Slider` / `RangeSlider` |
+| `GlassPanelSize` | 320×220 / 480×320 / 640×420 | `GlassPanel` |
+| 菜单 | 240×200 / 240×280 | `MenuButton fixed_size` |
+| `SheetSize::Md` | 520×360 | `Sheet` |
+| Toast | 320×34 | `ToastHost` |
 
-原因：Chromium 的 `feImage` 不能可靠拉伸预计算贴图；贴图尺寸必须与元素一致。加档位的流程见 [`../docs/01-控件契约.md`](../docs/01-控件契约.md) §12.1。
+原因：Chromium 的 `feImage` 不能可靠拉伸预计算贴图，贴图尺寸必须与元素尺寸一致。宽度不固定的用 `CapsuleSize::Auto`，塞进固定档位会露出比内容宽一截的外壳。
 
----
+## 7. 版本与语义化
 
-## 7. 版本
-
-- `Cargo.toml` 的 `version` 与 `src/lib.rs` 的 `VERSION` 必须一致。
+- `Cargo.toml` 的 `version` 与 `install()` 写出的 `data-gd-version` 同源（`env!("CARGO_PKG_VERSION")`，不会漂）。
 - 新增 prop / 新增组件：minor。
-- 改 props 形状、删组件、改 DOM/键盘契约、改贴图尺寸：major。
-- 不承诺跨 major 的样式兼容；CSS 变量改名先加别名，下一个 major 再删。
+- 改 props 形状、删组件、改 DOM / 键盘契约、改贴图尺寸：major。
+- CSS 变量改名先加别名，下一个 major 再删。
 
----
+## 8. 边界
 
-## 8. 当前状态
+104 个公开组件（`#[component]` 共 106 处，其中 `ParentScope` 是 `pub(crate)`、`Light` 是私有内部件，不计入公开面），全部从 `prelude` 导出，分八类：布局与表面 / 控件 / 表单 / 外观 / 数据与内容 / 导航 / 浮层与面板 / 状态与占位。
 
-| 项 | 状态 |
-|---|---|
-| 目录契约 | 已定（本文件） |
-| Rust 组件 | P3：88 个（按钮/表单/选择/列表/表格/树/浮层/面板/导航/工具栏），清单见 `../docs/03-实现清单.md` |
-| CSS 迁移 | tokens / optics / base / layout + 64 个分区已进 `css/src`；`24-glass-renderer` 停用 |
-| 静态材质 | 胶囊 34/112/180 + 滑块拇指；构建期贴图，运行时无 JS |
-| 示例应用 | 八个分区画廊跑通（基础/表单/外观/数据/导航/面板/工具栏/浮层），浅色/深色与交互已验证 |
-| Tauri 宿主 | 可编译；透明窗口/无边框待实机截图 |
-| `index.html` | P1 静态视觉快照已生成 |
+用之前先看 `docs/02-组件契约.md` §13 的边界表。几个常被问到的：
 
-排期与出口条件见 [`../docs/02-迁移矩阵.md`](../docs/02-迁移矩阵.md) §2 与 [`../docs/00-探索-脉络.md`](../docs/00-探索-脉络.md) §13。
+- `TreeView` 只有单选，没有多选与 typeahead。
+- `SplitView` 只支持两栏，比例制（`--split` 0..1），不持久化。
+- `Form` 没有字段注册表：字段不会自动跟随表单禁用。
+- `DataTable` 行高必须固定（虚拟滚动的前提），不支持列可见性。
+- `Sheet` 只有 `Md` 命中贴图，`Sm` / `Lg` 走纯 CSS。
+- `Dialog` 的 `dismissible=false` 时 Esc 与遮罩都关不掉，这是刻意的。
+
+这个 crate 只承诺 Windows / WebView2；macOS 与 Linux 是「能编译、样式有兜底」，玻璃折射不保证。

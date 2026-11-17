@@ -245,6 +245,10 @@ pub fn Select(
                         class="c-menu"
                         role="menu"
                         tabindex="-1"
+                        // 下拉面板不是 Menu 组件，得自己给这个钩子：
+                        // 13-menu.css 的入场动画认 [data-state="open"]，
+                        // 属性一出现就重新播一遍（关掉时属性消失，下次才从头播）。
+                        data-state=move || open.get().then_some("open")
                         node_ref=panel_ref
                         style=panel_style
                     >

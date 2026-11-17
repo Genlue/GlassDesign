@@ -2,18 +2,29 @@
 //!
 //! 用法：
 //! ```ignore
-//! glass_design::install();
-//! let theme = glass_design::Theme::provide();
+//! glass_design::bootstrap(App);
 //! ```
+//!
+//! 或者拆开手写：`install()` → `Theme::provide()` → `mount_to_body()`。
+
+// 重新导出框架本体，给 `Signal` / `Callback` 这类 props 类型一个版本锚点，
+// 也让 `glass_design::leptos` 在泛型与文档里可引用。
+// 注意：它替代不了直接依赖 —— `#[component]` / `view!` 展开成 `::leptos::…` 的绝对路径，
+// 使用方仍要在自己的 Cargo.toml 里声明 leptos 与 wasm-bindgen（见 README §1）。
+pub use leptos;
+pub use wasm_bindgen;
 
 pub mod base;
 pub mod layout;
 pub mod widgets;
 
 pub mod prelude {
+    pub use crate::base::bootstrap::*;
     pub use crate::base::i18n::{fill, provide_locale, t, Locale, Strings};
     pub use crate::base::icon::{Icon, IconName, ICON_COUNT};
-    pub use crate::base::install::{install, InstallReport, VERSION};
+    pub use crate::base::install::{
+        glass_defs_svg, install, install_with, styles_css, InstallConfig, InstallReport, VERSION,
+    };
     pub use crate::base::overlay::{OverlayHost, OverlayId, OverlayKind, Z_TOAST};
     pub use crate::base::theme::{Theme, ThemeMode};
     pub use crate::base::types::Size;
@@ -60,6 +71,7 @@ pub mod prelude {
     pub use crate::widgets::radio_group::{RadioGroup, RadioOption};
     pub use crate::widgets::range_slider::RangeSlider;
     pub use crate::widgets::search_field::SearchField;
+    pub use crate::widgets::section_wave::{SectionWave, WaveItem};
     pub use crate::widgets::segmented::{Segmented, SegmentedOption, SegmentedSize};
     pub use crate::widgets::select::{Select, SelectOption};
     pub use crate::widgets::selection::SelectionMode;
@@ -75,18 +87,20 @@ pub mod prelude {
     pub use crate::widgets::tile::Tile;
     pub use crate::widgets::toast::{toast, toast_with, ToastHost, ToastItem};
     pub use crate::widgets::tooltip::{Tooltip, TooltipPlacement};
+    pub use crate::widgets::traffic_lights::TrafficLights;
     pub use crate::widgets::token_field::TokenField;
     pub use crate::widgets::toolbar_customization::{ToolbarCustomization, ToolbarField};
     pub use crate::widgets::toolbar_overflow::{ToolbarAction, ToolbarOverflow};
     pub use crate::widgets::tree_view::{TreeNode, TreeState, TreeView};
 
     pub use crate::layout::glass_panel::{GlassPanel, GlassPanelSize};
+    pub use crate::layout::primitives::*;
     pub use crate::layout::shell::{
         AppShell, Main, NavColumn, NavGroup, NavItem, NavSection, ScrollArea,
     };
     pub use crate::layout::surfaces::{Card, Divider, Row, SectionTitle};
     pub use crate::layout::toolbar::{
-        Capsule, CapsuleSize, Toolbar, ToolbarLead, ToolbarPills, ToolbarTitle,
+        Capsule, CapsuleSize, Toolbar, ToolbarChrome, ToolbarLead, ToolbarPills, ToolbarTitle,
     };
 }
 

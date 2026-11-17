@@ -42,6 +42,25 @@ impl Theme {
         };
         provide_context(theme);
         Effect::new(move |_| theme.apply());
+
+        // 「跟随系统」必须真的跟：`prefers-color-scheme` 变了要重算一次。
+        // 只监听是没用的 —— 还要在回调里判断当前 mode，否则用户手动选了
+        // 浅色之后，系统一换深色就会被强行拽走。
+        if let Some(mq) = web_sys::window()
+            .and_then(|w| w.match_media("(prefers-color-scheme: dark)").ok().flatten())
+        {
+            let cb = wasm_bindgen::closure::Closure::<dyn FnMut()>::new(move || {
+                if theme.mode.get_untracked() == ThemeMode::System {
+                    theme.apply();
+                }
+            });
+            let _ = mq.add_event_listener_with_callback(
+                "change",
+                wasm_bindgen::JsCast::unchecked_ref(cb.as_ref()),
+            );
+            // 根组件不卸载，监听器活到进程结束 —— 这里就是它的归属。
+            std::mem::forget(cb);
+        }
         theme
     }
 
@@ -51,6 +70,27 @@ impl Theme {
 
     pub fn set_accent(&self, hex: &'static str) {
         self.accent.set(hex);
+    }
+
+    /// 覆盖任意设计令牌（写 <html> 的行内样式）。名字可写 `--r-md` 或 `r-md`。
+    /// 注意：这是「模式无关」的覆盖，深浅两套主题共用同一个值。
+    ///
+    /// 字号、圆角、字体、密度这些没有旋钮的令牌走这里，比在页面里写死像素好：
+    /// 值仍然落在令牌上，组件本身不用改。写的是元素行内属性，与 `data-theme` 无关，
+    /// 所以切换主题不会把它冲掉。
+    pub fn set_token(&self, name: &str, value: &str) {
+        let Some(style) = root_style() else {
+            return;
+        };
+        let _ = style.set_property(&token_name(name), value);
+    }
+
+    /// 撤掉一次覆盖，回落到 tokens.css 里的值。
+    pub fn remove_token(&self, name: &str) {
+        let Some(style) = root_style() else {
+            return;
+        };
+        let _ = style.remove_property(&token_name(name));
     }
 
     fn apply(&self) {
@@ -84,6 +124,24 @@ impl Theme {
         let _ = style.set_property("--shadow-k", &self.shadow.get().to_string());
         let _ = style.set_property("--ic-stroke", &self.stroke.get().to_string());
         apply_accent(&style, self.accent.get(), resolved);
+    }
+}
+
+/// 根节点的行内样式表。读不到 DOM（SSR 或挂载前）就返回 None，调用方静默跳过。
+fn root_style() -> Option<web_sys::CssStyleDeclaration> {
+    web_sys::window()
+        .and_then(|w| w.document())
+        .and_then(|d| d.document_element())
+        .and_then(|el| el.dyn_into::<web_sys::HtmlElement>().ok())
+        .map(|html| html.style())
+}
+
+/// 令牌名统一补 `--`：调用方写 `r-md` 或 `--r-md` 都能命中同一个自定义属性。
+fn token_name(name: &str) -> String {
+    if name.starts_with("--") {
+        name.to_string()
+    } else {
+        format!("--{name}")
     }
 }
 

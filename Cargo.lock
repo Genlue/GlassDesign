@@ -1315,7 +1315,7 @@ dependencies = [
 
 [[package]]
 name = "glass-design"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "js-sys",
  "leptos",
@@ -1327,6 +1327,7 @@ dependencies = [
 name = "glass-design-app"
 version = "0.1.0"
 dependencies = [
+ "glass-design-host",
  "serde",
  "serde_json",
  "tauri",
@@ -1338,8 +1339,22 @@ name = "glass-design-gallery"
 version = "0.1.0"
 dependencies = [
  "glass-design",
+ "js-sys",
  "leptos",
  "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
+name = "glass-design-host"
+version = "0.8.0"
+dependencies = [
+ "base64 0.22.1",
+ "png",
+ "serde",
+ "serde_json",
+ "tauri",
+ "windows",
 ]
 
 [[package]]

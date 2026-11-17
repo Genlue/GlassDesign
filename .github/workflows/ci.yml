@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  glass-design:
+    name: glass-design
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      # host/ 依赖 tauri 与 windows crate，UNIX runner 上装不齐系统依赖，
+      # 所以这里只针对 glass-design 跑，不构建整个 workspace。
+      - name: 单测
+        run: cargo test -p glass-design --lib
+
+      - name: wasm 编译
+        run: cargo check -p glass-design --target wasm32-unknown-unknown
+
+      - name: 无默认 feature 编译
+        run: cargo check -p glass-design --no-default-features
+
+      - name: 发布包不应带入编辑源
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo package -p glass-design --list > /tmp/pkg-list.txt
+          n=$(wc -l < /tmp/pkg-list.txt)
+          echo "发布包文件数: $n"
+          if [ "$n" -lt 40 ]; then
+            echo "::error::只列出 $n 个文件，包装大概率失败了"
+            exit 1
+          fi
+          if [ "$n" -ge 120 ]; then
+            echo "::error::发布包文件数 $n >= 120，检查 控件/Cargo.toml 的 include 是否放进了 css/src/"
+            exit 1
+          fi

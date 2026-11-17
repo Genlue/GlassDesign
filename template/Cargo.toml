@@ -1,0 +1,9 @@
+[workspace]
+resolver = "2"
+members = ["ui", "src-tauri"]
+
+# wasm 体积优先：release 走尺寸优化，链接时再剥一次。
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1

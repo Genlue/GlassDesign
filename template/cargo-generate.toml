@@ -1,0 +1,9 @@
+[template]
+cargo_generate_version = ">=0.10.0"
+
+# {{project-name}} 是 cargo-generate 的内置变量：默认取目标目录名，
+# 也可以用 `cargo generate --name my-app ...` 指定。这里不重复声明 ——
+# 内置名不允许在 [template.variables] 里重新定义。
+#
+# 另一个可用变量是 {{crate_name}}：project-name 把 `-` 换成 `_`，
+# 用在 wasm 产物文件名上（cargo 的 lib 名不允许连字符）。

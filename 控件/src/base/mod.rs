@@ -1,4 +1,5 @@
 pub mod anchor;
+pub mod bootstrap;
 pub mod icon;
 pub mod i18n;
 pub mod id;

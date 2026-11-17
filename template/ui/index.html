@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="data:," />
+<title>{{project-name}}</title>
+<style>
+  /* 库只负责控件；页面的高度链归页面自己。少了这三行，滚动会落到 window 上。 */
+  html, body { height: 100%; margin: 0; overflow: hidden; }
+  body { background: transparent; }
+</style>
+</head>
+<body>
+  <!-- 玻璃折的就是这一层。宿主（glass-design-host）会把实时截屏写进
+       --wallpaper-image；在浏览器里直接看时没有宿主，用 tokens.css 的默认壁纸。 -->
+  <div id="wallpaper"></div>
+
+  <!-- bootstrap() 把根组件挂到 body，不需要容器。这个空 div 留给
+       「不用 bootstrap、改 mount_to(#app, App)」的写法，默认是空节点。 -->
+  <div id="app"></div>
+
+  <script type="module">
+    // wasm-bindgen --target web 的产物。文件名取自 crate 的 lib 名：
+    // {{crate_name}}_ui.js / {{crate_name}}_ui_bg.wasm
+    import init from './pkg/{{crate_name}}_ui.js';
+    await init();
+  </script>
+
+  <!-- 壁纸接线：普通 script（不是 module），页面解析到这里就执行，
+       早于上面 deferred 的 module —— 玻璃挂载前 --wallpaper-image 已就位。
+       宿主里它调 capture_backdrop 把桌面写进 #wallpaper；浏览器里什么都不做。
+       需要 tauri.conf.json 的 app.withGlobalTauri 才能拿到 window.__TAURI__。 -->
+  <script src="wallpaper.js"></script>
+</body>
+</html>

@@ -107,7 +107,16 @@ impl IconName {
 }
 
 impl IconName {
+    /// 业务图标：直接给 24 视框的 path/circle/rect 片段（不含 <svg> 外壳）。
+    pub const fn custom(markup: &'static str) -> Self {
+        Self(markup)
+    }
+
     pub fn path(self) -> &'static str {
+        // 自定义图标就是标记本身；内置图标是 key，走下面那张表。
+        if self.0.starts_with('<') {
+            return self.0;
+        }
         match self.0 {
             "house" => {
                 r#"<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>"#

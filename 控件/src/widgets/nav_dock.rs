@@ -86,6 +86,9 @@ pub fn NavDock(
     #[prop(into, optional)] label: String,
     #[prop(into, optional)] sep_after: String,
     #[prop(optional)] foot: Option<DockItem>,
+    /// 收起。收起动画与「不可点」都在 CSS 的 `[data-hidden="1"]` 里，
+    /// 这里只负责把属性写对。
+    #[prop(into, optional)] hidden: MaybeProp<bool>,
 ) -> impl IntoView {
     let n = items.len();
     let ids: Vec<String> = items.iter().map(|item| item.id.clone()).collect();
@@ -231,7 +234,7 @@ pub fn NavDock(
             data-edge=orientation.edge()
             // data-hidden 必须显式写 0：CSS 的收起态与 .l-stage 让位都是按
             // [data-hidden="0"] 命中的，缺这个属性两者的选择器都不成立。
-            data-hidden="0"
+            data-hidden=move || if hidden.get().unwrap_or(false) { "1" } else { "0" }
         >
             <div class="c-dock__pill" role="toolbar" aria-orientation=orientation.aria_orientation()>
                 {buttons}

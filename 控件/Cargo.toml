@@ -1,13 +1,32 @@
 [package]
 name = "glass-design"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
-description = "GlassDesign：Tauri 2 + Leptos 的桌面控件库"
+rust-version = "1.88"
+description = "Declarative desktop UI for Tauri 2 + Leptos (CSR), with build-time liquid glass"
 license = "MIT"
+readme = "README.md"
+documentation = "https://docs.rs/glass-design"
+repository = "https://github.com/Genlue/GlassDesign"
+homepage = "https://github.com/Genlue/GlassDesign"
+keywords = ["ui", "leptos", "tauri", "desktop", "wasm"]
+categories = ["gui", "web-programming::wasm"]
+# 发布包只带运行期真正要用的东西：源码、合并后的 glass.css、预计算贴图。
+# css/src/ 下 64 个分区是仓库里的编辑源，不进包（少 1 MiB，见 docs/03 §2.2）。
+include = ["/src/**", "/css/glass.css", "/assets/glass-defs.svg", "/examples/**", "/README.md", "/LICENSE"]
+
+[features]
+default = ["embedded"]
+# 把 331 KB CSS 与 134 KB SVG 编进 wasm，由 install() 注入。
+# 关掉可让前端用 <link rel="stylesheet" href="glass.css"> 自己引：
+# wasm 少 465 KB，首帧也不用等 wasm 才上样式（见 README §1.4）。
+embedded = []
 
 [dependencies]
-leptos = { version = "=0.8.23", features = ["csr"] }
-wasm-bindgen = "=0.2.130"
+# 库用 caret 而不是精确锁：精确锁会让使用方升级 leptos 时出现两份 crate，
+# `Signal` 变成两个不兼容的类型，满屏 E0308。
+leptos = { version = "0.8", features = ["csr"] }
+wasm-bindgen = "0.2"
 js-sys = "0.3"
 # web-sys 特性一次开齐：多个组件族并行开发，避免各自改这个文件。
 web-sys = { version = "0.3", features = [
@@ -19,4 +38,6 @@ web-sys = { version = "0.3", features = [
   "StorageEvent", "PointerEvent", "MouseEvent", "KeyboardEvent", "FocusEvent",
   "InputEvent", "CompositionEvent", "WheelEvent", "DragEvent", "DataTransfer",
   "FileList", "File", "Blob", "FileReader", "Url", "ScrollToOptions",
+  "ScrollIntoViewOptions", "ScrollBehavior", "ScrollLogicalPosition",
+  "AddEventListenerOptions", "Performance",
 ] }

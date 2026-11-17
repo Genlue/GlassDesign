@@ -1,132 +1,150 @@
 # GlassDesign
 
-Tauri 2 + Rust 的桌面界面库。
+Windows 桌面界面库：**Tauri 2 + Rust + Leptos（CSR）+ 构建期预计算的液态玻璃**。可作为 crates.io 依赖引入（`cargo add glass-design leptos wasm-bindgen`，三个都要，原因见 [`控件/README.md` §1](控件/README.md)），也可以整个仓库当作参考实现。
 
-库里只有一个可复制单元：`控件/`。整个文件夹拷进别的项目，加一行 path 依赖，调一次 `install()`，就能用 `view!` 拼界面；升级时用新文件夹覆盖旧文件夹。
-
-> **状态：P4 进行中 · 浮层几何与虚拟化已统一**（2026-11-15）。
-> 88 个 Rust 组件、八个画廊分区、Tauri 2 宿主；玻璃材质为**构建期预计算贴图 + 静态 SVG filter**，运行时没有 JavaScript、canvas 或 WebGL。
+界面用 `view!` 拼，运行时不碰 DOM、不碰测量、不注入 JavaScript。玻璃的模糊与折射全部在构建期算成静态 SVG filter，运行期只剩一条 `backdrop-filter`。
 
 ---
 
-## 和原仓库的关系
+## 四个目录 = 四层
 
-| 仓库 | 是什么 | 状态 |
+| 目录 | 角色 | 谁能依赖谁 |
 |---|---|---|
-| `Golden Gate HTML Design` | 原库：Electron + 原生 HTML/CSS/ES Module，84 个命令式工厂 | **冻结为参照**，不再演进 |
-| `GlassDesign` | 新库：Tauri 2 + Rust + Leptos，声明式组件 + 静态 SVG 材质 | **P4 · 88 组件** |
+| `控件/` | **界面库本体**，crate `glass-design` | 只依赖自己 `Cargo.toml` 里的 crates |
+| `host/` | 宿主胶水，crate `glass-design-host`：窗口装配、桌面截屏、壁纸 | 依赖 tauri + windows，不依赖 `控件/` |
+| `应用/` | 使用者：`ui/` 画廊（wasm）、`src-tauri/` 宿主 | 依赖 `控件/`、`host/` 与 `scripts/` 的产物 |
+| `scripts/` | 构建期工具：CSS、贴图、图标、打包、截图 | 只读 `控件/`，写它的产物 |
 
-旧库不是“上一版”，是**视觉与行为的对照标本**：10,204 行 CSS、8 套玻璃参数、766 条断言都留在旧仓库，新库逐批对照移植。
-
-## 一句话结论
-
-> 这不是把 76 个 JS 文件翻译成 Rust。
-> 是把库切成五个平面：**表现面原样保留，材质面静态化，结构面与行为面重写，宿主面替换。**
-
-- **表现面**（`styles/`，10,204 行）：与框架无关，51/62 个分区可逐控件切走。
-- **材质面**：构建期用纯函数算好位移/高光贴图，生成静态 SVG filter；运行时只挂 CSS 类名，没有 JS 引擎。
-- **结构面**（`scripts/ui/`，76 文件 18,664 行）：命令式工厂，全部改为 Rust 组件。
-- **行为面**（层栈、选择、命令、撤销、测量、焦点）：逻辑可对照，代码重写。
-- **宿主面**（Electron 6 个通道、透明窗口、红绿灯）：换成 Tauri 对等实现。
-
-## 液态玻璃的当前做法
-
-1. `scripts/build-glass.mjs` 用 `glass-schema / glass-shape / glass-optics` 算出每个固定形状的位移图与高光图。
-2. 贴图编码成 PNG，内嵌进 `控件/assets/glass-defs.svg` 的 `<filter>` 里。
-3. CSS 只写 `backdrop-filter: blur(...) saturate(...) url(#gd-glass-capsule-180)`。
-4. `install()` 注入 CSS 与这份静态 SVG，不注入任何脚本。
-
-**关键约束**：Chromium 的 `feImage` 不能可靠地把预计算贴图拉伸到任意尺寸。贴图必须和元素尺寸对齐，所以玻璃组件按**固定尺寸档**做：
-
-| 档位 | 尺寸 | 用在哪 |
-|---|---|---|
-| `CapsuleSize::Round` | 34 × 34 | 顶栏圆形按钮 |
-| `CapsuleSize::Sm` | 112 × 34 | 短胶囊 |
-| `CapsuleSize::Md` | 180 × 34 | 长胶囊 |
-| 滑块拇指 | 24 × 16 | `Slider` / `RangeSlider` |
-| `GlassPanelSize` | 320×220 / 480×320 / 640×420 | 折射面板 |
-| 菜单 | 240×200 / 240×280 | `MenuButton fixed_size` |
-| 模态 | 520×360 | `Sheet` 的 Md 档 |
-| 提示条 | 320×34 | `ToastHost` |
-| `Auto` | 自适应 | 不套 SVG filter，走纯 CSS 兜底 |
-
-要加新尺寸，在 `scripts/build-glass.mjs` 的 `SHAPES` 里加一条，重新生成贴图与 CSS；不要指望一张图拉伸到所有宽度。
-
-## 三条硬规矩
-
-1. **`控件/` 是唯一复制单元。** 它只能依赖自己 `Cargo.toml` 里列出的 crates，不许 import 仓库里的 `应用/`、`scripts/`、`docs/`。
-2. **外观只走令牌与类名。** Rust 里不出现字面色值、字号、圆角、阴影；一律用 `css/tokens.css` 的变量和既有类名。
-3. **材质由固定尺寸档触发。** 组件只写 `class` / `data-size`；贴图与 filter 在构建期生成，运行时不计算。
-
-## 目录
+依赖是单向的：`scripts → 控件 ← 应用 → host`。`控件/` 不许反向依赖任何东西——它整个文件夹拷进别的项目就能用。
 
 ```text
 GlassDesign/
-├── README.md                  ← 你在这里
-├── Cargo.toml                 workspace
-├── .cargo/config.toml         清空代理（本机 cargo 需要）
-├── docs/
-│   ├── 00-探索-脉络.md         现状、判断、选型、风险、路线
-│   ├── 01-控件契约.md          声明式 API：props / 受控 / 插槽 / 生命周期
-│   ├── 02-迁移矩阵.md          84 个工厂 → Rust 组件的分批与难度
-│   ├── 03-实现清单.md          88 个已实现组件、简化边界与验证记录
-│   └── 04-交接.md             现在到哪一步、为什么、坑在哪、下一步
-├── 控件/                      ← 唯一复制单元
-│   ├── Cargo.toml
-│   ├── src/                   Rust 组件
-│   ├── css/                   tokens / optics / base / layout / components(64)
-│   └── assets/glass-defs.svg  静态 SVG filter + 预计算贴图
+├── 控件/                         ← 库本体（也能整目录拷走）
+│   ├── Cargo.toml                  crate glass-design
+│   ├── src/
+│   │   ├── base/                   install / theme / overlay / anchor / virtual_window / icon / i18n
+│   │   ├── layout/                 shell / toolbar / surfaces / glass_panel
+│   │   └── widgets/                104 个公开组件，一个文件一族
+│   ├── css/
+│   │   ├── src/                    tokens · optics · base · layout + components/（64 个分区）
+│   │   └── glass.css               展开后的单文件（build-css 生成）
+│   └── assets/glass-defs.svg       预计算位移/高光贴图 + 静态 filter
 ├── 应用/
-│   ├── ui/                    Leptos 画廊（wasm）
-│   └── src-tauri/             Tauri 2 宿主
-├── scripts/                   构建 CSS / 贴图 / 图标 / 截图
-└── index.html                 静态视觉快照（无交互，可直接双击打开）
+│   ├── ui/                        Leptos 画廊（九个分区，含「调节」）
+│   └── src-tauri/                 无边框窗口 + 背景截屏命令
+├── host/                          宿主胶水 crate（窗口装配 / 截屏 / 壁纸）
+├── scripts/                       构建与验证工具（见 docs/03）
+├── docs/                          四篇：架构 / 组件契约 / 构建验证 / 作为库分发
+├── template/                      cargo-generate 模板（三步起一个新项目）
+├── index.html                     ★ 双击即用的单文件预览（wasm 内联，1.42 MB）
+└── index-static.html              只读快照（无 JS，仅比对版式）
 ```
 
-## 快速开始
+---
+
+## 三分钟跑起来
 
 ```sh
-# 1. 生成 CSS、SVG filter、图标
+# 1. 样式与材质（构建期一次性计算）
 node scripts/build-optics.mjs
 node scripts/build-glass.mjs
 node scripts/build-css.mjs
-node scripts/gen-icons.mjs "../Golden Gate HTML Design/scripts/core/icons.js"
 
-# 2. 编译画廊 wasm
-cargo build -p glass-design-gallery --target wasm32-unknown-unknown
-wasm-bindgen --target web --no-typescript --out-dir 应用/ui/dist \
-  target/wasm32-unknown-unknown/debug/glass_design_gallery.wasm
+# 2. wasm（release 默认带 24 MB 符号名，两个 --remove-* 不能省）
+cargo build -p glass-design-gallery --target wasm32-unknown-unknown --release
+wasm-bindgen --target web --no-typescript --remove-name-section --remove-producers-section \
+  --out-dir 应用/ui/dist target/wasm32-unknown-unknown/release/glass_design_gallery.wasm
 
-# 3. 起静态服务看画廊
-cd 应用/ui/dist && python -m http.server 8777
+# 3. 看
+node scripts/preview.mjs                 # http://127.0.0.1:8777 —— 热改热看
+# 或者打包成单文件，双击就能点：
+wasm-bindgen --target no-modules --no-typescript --remove-name-section --remove-producers-section \
+  --out-name gd --out-dir 应用/ui/dist/nm target/wasm32-unknown-unknown/release/glass_design_gallery.wasm
+node scripts/build-standalone.mjs        # → index.html
 
-# 4. 导出静态快照（另开一个终端，在仓库根执行）
-node scripts/build-static.mjs
-
-# 5. Tauri 宿主
-cargo build -p glass-design-app
+# 4. 宿主
+cargo build -p glass-design-app && ./target/debug/glass-design-app.exe
 ```
 
-`index.html` 是静态视觉快照，不含交互；交互版在 `应用/ui/dist/index.html`。
+只需改样式时，跑第 1、3 步就够（第 3 步要分别重跑两次 wasm-bindgen 与 standalone）。
 
-## 怎么读
+---
 
-- 第一次接触：本文件 + [`docs/00-探索-脉络.md`](docs/00-探索-脉络.md)。
-- 要动手写控件：先读 [`docs/01-控件契约.md`](docs/01-控件契约.md)，再查 [`docs/02-迁移矩阵.md`](docs/02-迁移矩阵.md)。
-- 要复制控件库到别的项目：读 [`控件/README.md`](控件/README.md)。
-- 要接手继续做：读 [`docs/04-交接.md`](docs/04-交接.md)。
+## 液态玻璃怎么实现的
 
-## 下一步
+材质不是运行时算的，是**构建期算完画成贴图**：
 
-P3 已完成：把旧库剩下的 37 个组件全部迁完（数值/日期/令牌/文件/颜色、`DataTable` / `TreeView` / `CollectionView`、
-`Menu` / `Popover` / `Tooltip` / `Sheet` / `Drawer`、`Inspector` / `SplitView` / `StatusBar`、`NavDock` / `DocumentTabs` /
-`NavSearch` / `ToolbarOverflow` / `ToolbarCustomization` / `Form`），并把浮层统一到 `OverlayHost`。
+```text
+scripts/glass/{schema,shape,optics}.js
+        │  build-glass.mjs
+        ├──▶ 位移图 + 高光图（PNG → base64）
+        ├──▶ 控件/assets/glass-defs.svg   〈filter id="gd-glass-*"〉
+        └──▶ components/63-glass-svg.css  选择器 + backdrop-filter: url(#…)
+install() ──▶ <style id="gd-styles"> + <div id="gd-glass-defs">
+组件只写 class / data-glass ──▶ 浏览器自己套 filter
+```
 
-P4 已完成两项：
+两条硬约束：
 
-- **浮层几何统一**：所有锚定面板 `Portal` 到 body、按视口坐标定位，翻上/夹取/跟随滚动都收敛到 `控件/src/base/anchor.rs`，包含块（`transform`/`backdrop-filter`）问题根治。
-- **虚拟化公共层**：`控件/src/base/virtual_window.rs` 一份窗口算法，`DataTable` / `TreeView` / `CollectionView` 三处复用；2000 行树的 DOM 节点从 ~17.6k 降到 216。
+1. **贴图尺寸必须等于元素尺寸。** Chromium 的 `feImage` 不能可靠拉伸预计算贴图，所以玻璃按 11 个固定档位生成（胶囊 34/112/180、拇指 24×16、面板三档、菜单两档、Sheet、Toast）；不在档位里的走 `Auto`：纯 CSS 涂层，没有位移折射。
+2. **玻璃折的是 `#wallpaper`。** `backdrop-filter` 只能采窗口内的像素，窗口外的桌面它看不见。所以页面最底层必须是一张"桌面快照"：宿主（Tauri）实时截屏喂进来，浏览器预览用合成桌面顶上。内容面留 94% 不透明，桌面只透上来一层气氛。
 
-P4 剩余都是**能力上限**：同 rank 单开仲裁、`DataTable` 行内编辑与受控选择、变高行虚拟化、日期区间、i18n、退出动画。
+---
 
-完整清单与简化边界见 [`docs/03-实现清单.md`](docs/03-实现清单.md)。
+## 硬规矩
+
+1. **`控件/` 是唯一复制单元**：不许 import `应用/`、`scripts/`、`docs/`，不许依赖运行期文件路径（样式与贴图一律 `include_str!`）。
+2. **外观只走令牌与类名**：Rust 里不出现字面色值、字号、圆角、阴影；动态几何（`top/left/height`）除外。
+3. **材质只由固定尺寸档触发**：组件只写 `class` / `data-glass`，运行时不计算滤镜。
+4. **任何 `position: fixed` 的浮层必须走 `Portal`**：留在组件 DOM 里会踩 `transform` / `backdrop-filter` 的包含块。
+5. **虚拟化行高必须固定**，且 CSS 与 Rust 用同一个数。
+6. **只追加，不改既有分区规则**：需要补充就追加到对应 `components/*.css` 末尾并写清原因，不动 `components.css` 的 import 顺序。
+7. **`prelude` 是唯一公开出口**：新增组件不在 `lib.rs` 导出就等于没做。
+
+---
+
+## 作为依赖使用
+
+```sh
+cargo add glass-design leptos wasm-bindgen
+```
+
+```rust
+use leptos::prelude::*;
+use glass_design::prelude::*;
+
+#[wasm_bindgen::prelude::wasm_bindgen(start)]
+pub fn start() { bootstrap(App); }
+```
+
+三个依赖都要写在应用里：`#[component]` / `view!` 展开成 `::leptos::…` 绝对路径，re-export 替代不了声明。库 re-export 只用于统一 props 类型与版本。四种接入方式（crates.io / git tag / path / 纯 HTML）、`embedded` 开关、主题令牌与图标扩展，见 [`控件/README.md`](控件/README.md)。
+
+---
+
+## 文档
+
+| 文档 | 回答什么 |
+|---|---|
+| [`docs/01-架构.md`](docs/01-架构.md) | 七条链怎么咬合：材质 / 主题 / 浮层 / 虚拟化 / 焦点 / 状态 / 文案 |
+| [`docs/02-组件契约.md`](docs/02-组件契约.md) | 对外承诺什么：props、受控、插槽、浮层、主题、材质档、104 个组件与各自边界 |
+| [`docs/03-构建与验证.md`](docs/03-构建与验证.md) | 怎么构建、产物是什么、怎么验证没弄坏、出问题查哪里 |
+| [`docs/04-作为库分发.md`](docs/04-作为库分发.md) | 发布前查什么、`cargo publish --dry-run`、semver 与 0.x 双版本共存风险 |
+| [`控件/README.md`](控件/README.md) | 把库当依赖引入怎么用 |
+
+---
+
+## 当前产物
+
+| 项 | 值 |
+|---|---|
+| 版本 | `glass-design` 0.8.0 / `glass-design-host` 0.8.0 |
+| 公开组件 | 104 个（`#[component]` 共 106 处，2 个为 `pub(crate)` / 私有，全部从 `prelude` 导出） |
+| CSS | `tokens / optics / base / layout` + 64 个分区（63 个参与合并，`glass.css` 313 KB） |
+| 材质档位 | 11 档 + `Auto` 兜底 |
+| 图标 | 97 个（24 视框，线宽由 `--ic-stroke` 控制） |
+| wasm | 3.42 MB（gzip 1.01 MB）+ 胶水 66 KB |
+| 发布包 | 84 个文件，1.3 MiB；压缩 405.5 KiB（`cargo package --list` 实测） |
+| 单文件预览 | `index.html` 1.42 MB（wasm gzip + base64 内联，`file://` 可跑） |
+| 只读快照 | `index-static.html` 712 KB（九个分区可切，控件冻结） |
+| 单测 | `cargo test -p glass-design --lib` → 30 passed |
+| 平台 | Windows / WebView2（macOS、Linux 只承诺可用 + CSS 兜底） |

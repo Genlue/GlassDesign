@@ -5,8 +5,12 @@ edition = "2021"
 
 [dependencies]
 glass-design = { path = "../../控件" }
-leptos = { version = "=0.8.23", features = ["csr"] }
-wasm-bindgen = "=0.2.130"
+# 与库一致用 caret：库里已经是 "0.8" / "0.2"，应用侧写精确锁会让
+# 「别写 =0.8.x」这条规矩在自己仓库里第一个不成立。
+leptos = { version = "0.8", features = ["csr"] }
+wasm-bindgen = "0.2"
+web-sys = { version = "0.3", features = ["Document", "Element", "HtmlElement", "Window", "Navigator", "Clipboard", "EventTarget", "Event", "MouseEvent", "DomTokenList"] }
+js-sys = "0.3"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

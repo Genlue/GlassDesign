@@ -953,6 +953,10 @@ fn menu_core(
     glass: Option<&'static str>,
     on_select: Option<Callback<String>>,
     on_close: Option<Callback<()>>,
+    // 打开后是否把焦点放进第一项。坐标菜单（右键）必须为 false：
+    // 一打开就有一项是 focus 态，而 `.c-menu__item:focus` 与 `:hover`
+    // 用的是同一套强调色 —— 看起来就像「还没指过去，第一项已经选中了」。
+    focus_first: bool,
 ) -> AnyView {
     let host = OverlayHost::use_or_provide();
     let panel_ref = NodeRef::<html::Div>::new();
@@ -1079,7 +1083,13 @@ fn menu_core(
                 }
                 let spec = root_spec();
                 anchor::place_and_apply(&anchor_el, &panel, spec);
-                focus_first_item(&panel);
+                if focus_first {
+                    focus_first_item(&panel);
+                } else {
+                    // 焦点给面板本身：没有哪一项是 focus 态，
+                    // 但键盘仍然可用（方向键 / Home / End 从面板出发）。
+                    let _ = panel.focus();
+                }
                 // 锚点被滚出视口就收起：留一个挂在屏幕外的面板没有意义。
                 // 这条关闭不该抢焦点（触发器此时在视口外）。
                 let on_gone: Rc<dyn Fn()> = Rc::new(move || {
@@ -1138,6 +1148,9 @@ pub fn Menu(
     #[prop(optional)] fixed_size: bool,
     #[prop(optional)] on_select: Option<Callback<String>>,
     #[prop(optional)] on_close: Option<Callback<()>>,
+    /// 打开后把焦点放进第一项。默认 true（键盘流）；
+    /// 右键菜单传 false —— 菜单不该在指针还没指过去时就有一项亮着。
+    #[prop(default = true)] focus_first: bool,
 ) -> impl IntoView {
     // 空 label 不在这里兜底：面板渲染时才查文案表，切语言能立刻反映到 aria-label。
     menu_core(
@@ -1148,6 +1161,7 @@ pub fn Menu(
         fixed_size.then_some("menu-240x280"),
         on_select,
         on_close,
+        focus_first,
     )
 }
 
@@ -1228,6 +1242,8 @@ pub fn MenuButton(
             fixed_size.then_some("menu-240x280"),
             on_select,
             Some(Callback::new(move |_| open.set(false))),
+            // 按钮触发的菜单是键盘流：打开就该能直接 ↓ 选，第一项带 focus。
+            true,
         )}
     }
 }

@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="data:," />
+<title>GlassDesign</title>
+<style>
+  html, body { height: 100%; margin: 0; overflow: hidden; }
+  body { background: transparent; }
+</style>
+<style>
+  /* ==========================================================================
+     画廊壳层（不进控件库：控件/ 拷走时不该带着画廊的排版癖好）
+     三件事：① 给玻璃一块「真实的背景」 ② 顶部渐进模糊的落点 ③ 标本页排版
+     ========================================================================== */
+
+  /* ① 背景层。**它不是装饰，是输入。**
+     #wallpaper 是页面最底层的一张「桌面快照」：
+       · data-source="host"   → Tauri 实时截取窗口背后的屏幕，data URL 写进 --wallpaper-image
+       · data-source="demo"   → 浏览器预览的替身（合成桌面）
+     玻璃（胶囊 / 侧栏 / 卡片）折的就是这一层。所以内容面必须留一点透光，
+     否则 backdrop-filter 采到的永远是纯色 —— 那正是上一版「没有玻璃味」的根因。 */
+  #wallpaper[data-source="host"] {
+    background: var(--wallpaper-image) center / cover no-repeat;
+  }
+  #wallpaper[data-source="demo"] {
+    background:
+      radial-gradient(1100px 760px at 16% 8%, rgb(122 92 214 / 0.85), transparent 62%),
+      radial-gradient(900px 680px at 84% 14%, rgb(214 122 84 / 0.72), transparent 58%),
+      radial-gradient(1000px 900px at 72% 92%, rgb(52 116 148 / 0.78), transparent 62%),
+      linear-gradient(158deg, #191a2b 0%, #2a2338 42%, #3a2b33 72%, #241f2c 100%);
+    background-size: cover;
+  }
+
+  /* 内容面：94% 不透明 —— 桌面只透上来一层气氛，正文对比度不动。
+     卡片再叠 84%，两层加起来正好是「磨砂压在有内容的桌面上」。 */
+  .l-main {
+    background: color-mix(in srgb, var(--surface-content) 94%, transparent);
+  }
+  .l-stage { position: relative; z-index: 1; }
+
+  /* ② 顶部渐进模糊的落点。库里的默认是 --toolbar-h（52），刚好贴住内容首行；
+     画廊首行在 72（.gd-page 有 20 上边距），所以能再往下 12px，
+     模糊的「起点」更低、拖尾更长 —— 但依然不碰第一个元素。 */
+  .l-main { --veil-h: 64px; }
+
+  /* ③ 侧栏透成玻璃柱：它背后就是那张桌面快照。 */
+  .l-app > .l-nav {
+    border-right: 1px solid var(--line-soft);
+    -webkit-backdrop-filter: blur(34px) saturate(1.5);
+    backdrop-filter: blur(34px) saturate(1.5);
+  }
+  [data-theme="dark"] .l-app > .l-nav {
+    background: color-mix(in srgb, var(--surface-window) 62%, transparent);
+  }
+  [data-theme="light"] .l-app > .l-nav {
+    background: color-mix(in srgb, var(--surface-window) 78%, transparent);
+  }
+
+  /* ③a 悬浮导航要浮在内容之上。画廊为了让内容压住壁纸，把 `.l-stage`
+     提到了 z-index:1，而库里 `.c-dock` 也是 1 —— 同层时 DOM 在后的 stage 赢，
+     结果 dock 被卡片盖住、点击也全被内容吃掉。 */
+  .l-app > .c-dock { z-index: 3; }
+
+  /* ③b 悬浮形态下，那枚按钮改成「收起悬浮导航」。
+     库里的规则是「dock 可见就把按钮收成 0 宽」—— 因为默认语义是收侧栏，
+     侧栏本来就不在。但那会留下旧库的一个死角：悬浮导航一旦出现就再也收不起来。
+     画廊让它保留，点一下收/放 dock（`nav_hidden` 同时喂给 NavDock）。 */
+  /* 多带一个 .c-capsule：库里的规则在后面注入，同权重会被它盖掉。 */
+  .l-app:has(> .c-dock[data-hidden="0"]) .l-chrome__toggle.c-capsule {
+    /* 必须写回它自己的 34：库里的隐藏规则把宽度收成 0，
+       而 `width:auto` 会让它按 padding 撑到 42，和圆钮的材质对不上。 */
+    width: 34px;
+    margin-right: 0;
+    opacity: 1;
+    pointer-events: auto;
+    visibility: visible;
+    transform: none;
+  }
+
+  /* ④ 排版密度。画廊是「标本页」不是「偏好设置页」：
+     标签占固定一列、控件紧贴标签，行高压到 34 上下。 */
+  /* 右侧留出波浪条那一列（.c-wave 宽 40 + 右 16 + 一点余量），
+     否则正文最后 40px 会被它压住。 */
+  .gd-page { padding: 20px 72px 56px 32px; }
+  .gd-page .l-stack--6 { gap: 18px; }
+  .gd-page .l-stack--4 { gap: 2px; }
+  .gd-page .l-pad { padding: 8px 0; }
+  .gd-page .c-card > .l-pad { padding: 10px var(--s-6) 12px; }
+  .gd-page .c-row {
+    min-height: 0;
+    padding: 8px var(--s-5);
+    gap: var(--s-5);
+  }
+  .gd-page .c-row__label {
+    flex: 0 1 168px;
+    min-width: 118px;
+  }
+  .gd-page .c-row__hint { font-size: var(--fs-11); }
+  .gd-page .c-section-title { margin-bottom: 2px; }
+
+  /* 控件列定宽：字段类默认按内容撑（225 / 180 / 171 各不相同），
+     一列排下来右缘参差。标本页要的是两列网格：标签 168 · 控件 280。 */
+  .gd-page .c-row__control { width: 280px; }
+  .gd-page .c-row__control--wide { width: auto; }
+  .gd-page .c-row__control > .c-field,
+  .gd-page .c-row__control > .c-textarea,
+  .gd-page .c-row__control > .c-numberfield,
+  .gd-page .c-row__control > .c-combobox,
+  .gd-page .c-row__control > .c-tokenfield,
+  .gd-page .c-row__control > .c-select {
+    width: 100% !important;
+  }
+
+  /* ⑤ 卡片从「不透明灰板」变成「磨砂片」。 */
+  .gd-page .c-card {
+    background: color-mix(in srgb, var(--surface-card) 84%, transparent);
+    -webkit-backdrop-filter: blur(22px) saturate(1.3);
+    backdrop-filter: blur(22px) saturate(1.3);
+  }
+
+  /* ⑥ 调节页：滑块 + 数值 + 变量名 + 输出框。 */
+  .gd-stage {
+    position: relative;
+    height: 148px;
+    border-radius: 14px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    padding: 0 22px;
+  }
+  .gd-stage__bg {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(115deg, #ff9a62 0%, #ff5f8f 34%, #7b61ff 68%, #2ec5ce 100%);
+    background-image:
+      repeating-linear-gradient(90deg, rgb(255 255 255 / 0.2) 0 2px, transparent 2px 28px),
+      linear-gradient(115deg, #ff9a62 0%, #ff5f8f 34%, #7b61ff 68%, #2ec5ce 100%);
+  }
+  .gd-stage__row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .gd-page .c-row:has(.gd-knob) .c-row__control { width: 392px; }
+  .gd-knob {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+  }
+  .gd-knob__track { width: 176px; flex: none; }
+  .gd-knob__value {
+    width: 58px;
+    flex: none;
+    text-align: right;
+    font-size: var(--fs-12);
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+  }
+  .gd-knob__key {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: var(--fs-11);
+    color: var(--text-quaternary);
+  }
+  .gd-knob__tag {
+    flex: none;
+    padding: 1px 5px;
+    border-radius: 5px;
+    background: var(--surface-well);
+    font-size: var(--fs-10);
+    color: var(--text-tertiary);
+  }
+  .gd-surf-note {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: var(--fs-11);
+    color: var(--text-tertiary);
+  }
+  .gd-surf-note code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--text-secondary);
+  }
+  .gd-sample {
+    display: grid;
+    place-items: center;
+  }
+  .gd-sample__name {
+    font-size: var(--fs-12);
+    color: #fff;
+    opacity: 0.9;
+  }
+  .gd-baked {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 3px 0;
+    font-size: var(--fs-12);
+  }
+  .gd-baked__label { width: 84px; flex: none; color: var(--text-secondary); }
+  .gd-baked__val {
+    width: 52px;
+    flex: none;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+  }
+  .gd-baked__key {
+    flex: 1 1 auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: var(--fs-11);
+    color: var(--text-quaternary);
+  }
+  .gd-tuner-out {
+    margin: 0;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: var(--surface-sunken);
+    box-shadow: inset 0 0 0 0.5px var(--line-soft);
+    color: var(--text-secondary);
+    font: 12px/1.65 ui-monospace, SFMono-Regular, Menlo, monospace;
+    white-space: pre;
+    overflow: auto;
+    user-select: text;
+  }
+</style>
+</head>
+<body>
+<div id="wallpaper" data-source="demo"></div>
+<script type="module">
+  import init from './glass_design_gallery.js';
+  init();
+</script>
+<!-- 壁纸接线脚本由 glass-design-host 提供，源在 host/assets/wallpaper.js；
+     用 scripts/sync-host-assets.mjs 同步到这个目录。普通脚本，不是 ESM。 -->
+<script src="wallpaper.js"></script>
+</body>
+</html>

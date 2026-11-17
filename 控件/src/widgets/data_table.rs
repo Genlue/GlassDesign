@@ -1104,7 +1104,7 @@ fn body_cell(
                             }
                             on:keydown=move |ev: web_sys::KeyboardEvent| {
                                 // 输入法组合态里的 Enter 是「确认候选」，不能拿来提交
-                                // （与 menu.rs 同一处理，坑在 04-交接 §7）。
+                                // （与 menu.rs 同一处理，原因见 docs/03 排障表）。
                                 if ev.is_composing() || ev.key_code() == 229 {
                                     ev.stop_propagation();
                                     return;
@@ -1187,7 +1187,7 @@ fn focus_th(root: &web_sys::Element, key: &str) {
 
 /// 把 DOM 焦点搬到行上。没有用 `focus({preventScroll:true})`：web-sys 没开
 /// `FocusOptions` 特性；效果等价的做法是「先自己最小滚动，再 focus」
-/// （见 04-交接 §7 坑 6：focus 默认居中会把连按 ↓ 的人拽回去）。
+/// （原因见 docs/03 排障表：focus 默认居中会把连按 ↓ 的人拽回去）。
 fn focus_row_el(root: &web_sys::Element, id: &str) {
     let Ok(list) = root.query_selector_all(".c-datatable__row") else {
         return;
