@@ -37,7 +37,7 @@ pub fn NavPage() -> impl IntoView {
         DocumentTab::new("index", "index.html").pinned(),
         DocumentTab::new("readme", "readme.md").dirty(),
         DocumentTab::new("app", "app.rs").dirty(),
-        DocumentTab::new("changes", "变更.md").closable(false),
+        DocumentTab::new("changes", "设计说明.md").closable(false),
         DocumentTab::new("theme", "theme.css"),
         DocumentTab::new("notes", "notes.txt"),
     ]);
@@ -46,7 +46,7 @@ pub fn NavPage() -> impl IntoView {
     let query = RwSignal::new(String::new());
 
     view! {
-        <div class="l-scroll" style="padding:24px 32px 64px">
+        <div class="gd-page">
             <div class="l-stack l-stack--6">
                 <Breadcrumb items=vec![
                     Crumb::new("工作区").icon(IconName::HOUSE),

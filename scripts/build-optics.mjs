@@ -36,6 +36,9 @@ const blocks = SURFACES.map(([id, cls]) => {
   --lg-stroke-half: ${o.strokeHalf};
   --lg-stroke-feather: ${o.strokeFeather};
   --lg-stroke-alpha: ${o.strokeAlpha};
+  /* 顶部晕光：上沿那道往下晕开的白光。和描边分开 —— 描边管的是 0.8px 的环，
+     这道是几十像素的柔和渐变，两者混在一个参数里就只能一起浓淡。 */
+  --lg-bloom: ${o.bloom ?? o.strokeAlpha};
   --lg-falloff: ${o.falloff};
   --lg-light: ${o.light};
   --lg-sheen: ${o.sheen};

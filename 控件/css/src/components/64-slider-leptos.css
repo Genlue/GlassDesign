@@ -2,5 +2,5 @@
    改用 left 的百分比表达式。其余光学样式仍在 04-slider.css。 */
 .c-slider__thumb {
   left: calc(var(--thumb-w) / 2 + (100% - var(--thumb-w)) * var(--p));
-  transform: scale(var(--thumb-s));
+  transform: scale(var(--thumb-s, 1));
 }

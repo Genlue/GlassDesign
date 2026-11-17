@@ -12,6 +12,9 @@
   --lg-stroke-half: 0.5;
   --lg-stroke-feather: 0.25;
   --lg-stroke-alpha: 0.22;
+  /* 顶部晕光：上沿那道往下晕开的白光。和描边分开 —— 描边管的是 0.8px 的环，
+     这道是几十像素的柔和渐变，两者混在一个参数里就只能一起浓淡。 */
+  --lg-bloom: 0.22;
   --lg-falloff: 1;
   --lg-light: 0;
   --lg-sheen: 0.1;
@@ -26,11 +29,14 @@
   --lg-depth: 0.6;
   --lg-dispersion: 0;
   --lg-vibrancy: 1.8;
-  --lg-coating: 0.58;
+  --lg-coating: 0.7;
   --lg-coating-color: rgb(var(--glass-rgb));
   --lg-stroke-half: 0.5;
   --lg-stroke-feather: 0.25;
   --lg-stroke-alpha: 0.2;
+  /* 顶部晕光：上沿那道往下晕开的白光。和描边分开 —— 描边管的是 0.8px 的环，
+     这道是几十像素的柔和渐变，两者混在一个参数里就只能一起浓淡。 */
+  --lg-bloom: 0.2;
   --lg-falloff: 1;
   --lg-light: 0;
   --lg-sheen: 0.1;
@@ -49,7 +55,10 @@
   --lg-coating-color: rgb(var(--glass-rgb));
   --lg-stroke-half: 0.8;
   --lg-stroke-feather: 0.25;
-  --lg-stroke-alpha: 0.34;
+  --lg-stroke-alpha: 0.22;
+  /* 顶部晕光：上沿那道往下晕开的白光。和描边分开 —— 描边管的是 0.8px 的环，
+     这道是几十像素的柔和渐变，两者混在一个参数里就只能一起浓淡。 */
+  --lg-bloom: 0;
   --lg-falloff: 1;
   --lg-light: 0;
   --lg-sheen: 0.1;
@@ -69,6 +78,9 @@
   --lg-stroke-half: 0.7;
   --lg-stroke-feather: 0.25;
   --lg-stroke-alpha: 0.3;
+  /* 顶部晕光：上沿那道往下晕开的白光。和描边分开 —— 描边管的是 0.8px 的环，
+     这道是几十像素的柔和渐变，两者混在一个参数里就只能一起浓淡。 */
+  --lg-bloom: 0;
   --lg-falloff: 1;
   --lg-light: 0;
   --lg-sheen: 0.1;
@@ -88,6 +100,9 @@
   --lg-stroke-half: 0.5;
   --lg-stroke-feather: 0.25;
   --lg-stroke-alpha: 0.2;
+  /* 顶部晕光：上沿那道往下晕开的白光。和描边分开 —— 描边管的是 0.8px 的环，
+     这道是几十像素的柔和渐变，两者混在一个参数里就只能一起浓淡。 */
+  --lg-bloom: 0.2;
   --lg-falloff: 1;
   --lg-light: 0;
   --lg-sheen: 0.1;
@@ -107,6 +122,9 @@
   --lg-stroke-half: 0.6;
   --lg-stroke-feather: 0.25;
   --lg-stroke-alpha: 0.24;
+  /* 顶部晕光：上沿那道往下晕开的白光。和描边分开 —— 描边管的是 0.8px 的环，
+     这道是几十像素的柔和渐变，两者混在一个参数里就只能一起浓淡。 */
+  --lg-bloom: 0;
   --lg-falloff: 1;
   --lg-light: 0;
   --lg-sheen: 0.1;
@@ -121,11 +139,14 @@
   --lg-depth: 0.6;
   --lg-dispersion: 0;
   --lg-vibrancy: 1.8;
-  --lg-coating: 0.86;
+  --lg-coating: 0.8;
   --lg-coating-color: rgb(var(--glass-rgb));
   --lg-stroke-half: 0.6;
   --lg-stroke-feather: 0.25;
   --lg-stroke-alpha: 0.24;
+  /* 顶部晕光：上沿那道往下晕开的白光。和描边分开 —— 描边管的是 0.8px 的环，
+     这道是几十像素的柔和渐变，两者混在一个参数里就只能一起浓淡。 */
+  --lg-bloom: 0.24;
   --lg-falloff: 1;
   --lg-light: 0;
   --lg-sheen: 0.1;
@@ -134,9 +155,9 @@
 }
 
 .c-slider__thumb {
-  --lg-band: 7.2;
-  --lg-amount: 3.2;
-  --lg-amount-k: 0.320;
+  --lg-band: 4;
+  --lg-amount: 7.6;
+  --lg-amount-k: 0.760;
   --lg-depth: 0.6;
   --lg-dispersion: 0;
   --lg-vibrancy: 1;
@@ -145,6 +166,9 @@
   --lg-stroke-half: 0.8;
   --lg-stroke-feather: 0.35;
   --lg-stroke-alpha: 0;
+  /* 顶部晕光：上沿那道往下晕开的白光。和描边分开 —— 描边管的是 0.8px 的环，
+     这道是几十像素的柔和渐变，两者混在一个参数里就只能一起浓淡。 */
+  --lg-bloom: 0;
   --lg-falloff: 1;
   --lg-light: 0;
   --lg-sheen: 0.1;

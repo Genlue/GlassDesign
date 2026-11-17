@@ -115,14 +115,12 @@
   padding: 0;
   border: 0;
   background: none;
-  cursor: grab;
-  touch-action: none;
+    touch-action: none;
   -webkit-tap-highlight-color: transparent;
 }
 
 .c-drawer__grip:active {
-  cursor: grabbing;
-}
+  }
 
 .c-drawer__grip:focus-visible {
   outline: none;

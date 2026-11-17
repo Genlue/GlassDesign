@@ -53,7 +53,7 @@ pub fn OverlayPage() -> impl IntoView {
         SelectOption::new("team", "团队版"),
     ];
 
-    // 浮层族（P3-D）的状态
+    // 浮层族的状态
     let picked = RwSignal::new(String::new());
     let pop_bottom = RwSignal::new(false);
     let pop_right = RwSignal::new(false);
@@ -70,7 +70,7 @@ pub fn OverlayPage() -> impl IntoView {
     });
 
     view! {
-        <div class="l-scroll" style="padding:24px 32px 64px">
+        <div class="gd-page">
             <div class="l-stack l-stack--6">
                 <div class="l-stack l-stack--2">
                     <h1 class="c-headline">"浮层"</h1>

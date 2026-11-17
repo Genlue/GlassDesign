@@ -108,8 +108,7 @@
   border-radius: var(--r-xs);
   background: none;
   color: var(--text-quaternary);
-  cursor: grab;
-  /* 触摸拖动时不要让浏览器先滚列表 */
+    /* 触摸拖动时不要让浏览器先滚列表 */
   touch-action: none;
   transition: color var(--dur-1) var(--ease-out);
 }
@@ -120,8 +119,7 @@
 }
 
 .c-toolbarcustom__grip:active {
-  cursor: grabbing;
-}
+  }
 
 /* 真 checkbox 留在原地负责语义与焦点，视觉全部由 .__box 画 */
 .c-toolbarcustom__input {
@@ -251,7 +249,7 @@
 }
 
 /* ==========================================================================
-   62-补 · 锁定行（P3-E3 追加，ToolbarCustomization 用）
+   62-补 · 锁定行（ToolbarCustomization 用）
    —— 锁定 = 永远可见、不能隐藏、不参与重排。上面那套是旧库「必需项」的
       写法（真 checkbox + :disabled），新控件复用 Switch 与手柄按钮，
       所以补两条：

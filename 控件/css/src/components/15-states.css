@@ -84,3 +84,62 @@
   }
 }
 
+/* ==========================================================================
+   浮层入场（菜单 / 气泡 / 对话框 / 模态共用）
+
+   ★ 入场只允许改「不产生几何位移」的属性（opacity）。这不是保守，是硬约束：
+
+   原来这里写的是 scale(0.96 → 1)，对话框再加 translateY(6px)。transform-origin
+   在锚点上（`.c-menu` 是 `var(--origin, top left)`，对话框是面板中心），缩放是
+   以原点为中心的线性映射 —— 面板内每个元素都按「离原点多远」位移，方向是
+   沿半径向外/向内。于是：
+     · 同一块菜单里，第 1 项图标 y 偏 0.32px，第 5 项偏 5.3px（越远越狠）；
+     · 对话框居中缩放，左边的元素往左偏、右边往右偏 —— **方向真的不一样**；
+     · 位移量取决于面板相对锚点的位置与尺寸，也就是「弹出位置」。
+   实测（1440×900，dsf=1，动画暂停在 t=0）：菜单第 4 项图标 dy=-4.12px，
+   对话框标题 (dx,dy)=(+4.48,+8.58)px。这正是用户说的「文字和图标自己挪一下」。
+
+   scale 的观感如果要保留，只能缩一块**不含内容的背景层**（需要 Rust 侧给面板
+   加一层 wrapper），不能直接缩面板。
+
+   仍然用 backwards：动画结束后不留任何 transform 残留（挂着的 scale(1) 会让
+   面板成为包含块，内部 fixed 子元素与 backdrop 采样范围都会跟着走）。
+   ========================================================================== */
+@keyframes gd-pop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 对话框 / 模态与菜单同一条约束：只淡入。名字保留，四处调用点不必改。 */
+@keyframes gd-sheet-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 组合框 / 日期选择 / 色板的面板常驻 DOM，靠 display:none 开关：
+   从 none 变成可见时 CSS 动画会重新开始，正好当入场用。 */
+.c-combobox__panel,
+.c-datepicker__panel,
+.c-colorwell__panel {
+  animation: gd-pop-in 180ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .c-combobox__panel,
+  .c-datepicker__panel,
+  .c-colorwell__panel,
+  .c-menu[data-state="open"],
+  .c-popover[data-state="open"],
+  .c-dialog-scrim[data-state="open"] .c-dialog,
+  .c-sheet-scrim[data-state="open"] .c-sheet {
+    animation: none;
+  }
+}

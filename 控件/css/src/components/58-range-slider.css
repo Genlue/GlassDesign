@@ -19,6 +19,9 @@
   --thumb-op: 1;
   --thumb-fade-out: 90ms cubic-bezier(0.2, 0.9, 0.1, 1);
   --thumb-fade-in: 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  /* 与单值滑块同一套按压曲线 */
+  --thumb-press-in: 260ms cubic-bezier(0.18, 1.42, 0.34, 1);
+  --thumb-press-out: 200ms cubic-bezier(0.3, 1.12, 0.44, 1);
   --p-lo: 0;
   --p-hi: 1;
   display: flex;
@@ -114,7 +117,8 @@
 
 /* 玻璃药丸：与单值滑块同一套光学（第八个面 thumb），只是多了一颗 */
 .c-rangeslider__thumb {
-  --thumb-blur-px: calc((4px + 14px * var(--lg)) * var(--glass-blur-k, 0.3));
+  --thumb-blur-rest: calc((4px + 14px * var(--lg)) * var(--glass-blur-k, 0.3));
+  --thumb-blur-px: var(--thumb-blur-rest);
   position: absolute;
   top: 50%;
   inset-inline-start: calc(var(--p, 0) * 100%);
@@ -170,8 +174,10 @@
     inset 0 -1px 2px rgb(0 0 0 / calc(0.12 * var(--shadow-k)));
   /* 只做缩放，位移交给 margin —— translateX(-50%) 和 scale 混在一起会把居中也一起缩放 */
   transform: scale(var(--thumb-s));
+  transition:
+    transform var(--thumb-press-out),
+    --thumb-blur-px var(--thumb-fade-in);
   will-change: transform;
-  cursor: grab;
 }
 
 /* 交互膜：只负责按压时的白色反光，不承担基础涂层 */
@@ -189,11 +195,12 @@
   transition: opacity var(--thumb-fade-in);
 }
 
-/* 按下：白膜淡出、背景模糊收到 0（放大后的那颗透镜是"清"的） */
+/* 按下：白膜淡出、背景再糊 20%（与单值滑块一致） */
 .c-rangeslider__thumb[data-dragging="1"] {
-  --thumb-blur-px: 0px;
-  transition: --thumb-blur-px var(--thumb-fade-out);
-  cursor: grabbing;
+  --thumb-blur-px: calc(var(--thumb-blur-rest) * 1.2);
+  transition:
+    transform var(--thumb-press-in),
+    --thumb-blur-px var(--thumb-fade-out);
   z-index: 5;
 }
 

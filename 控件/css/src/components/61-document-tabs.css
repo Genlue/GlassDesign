@@ -232,8 +232,7 @@
 .c-documenttabs__tab.is-dragging {
   opacity: 0.45;
   transform: scale(0.97);
-  cursor: grabbing;
-}
+  }
 
 .c-documenttabs[data-dragging="1"] {
   user-select: none;

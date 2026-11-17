@@ -123,13 +123,11 @@
 
 /* 页签拖拽排序 */
 .c-tabs__tab[draggable="true"] {
-  cursor: grab;
-  user-select: none;
+    user-select: none;
 }
 
 .c-tabs__tab[draggable="true"]:active {
-  cursor: grabbing;
-}
+  }
 
 .c-tabs__tab.is-dragging {
   opacity: 0.45;

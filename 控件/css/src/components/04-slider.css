@@ -21,6 +21,11 @@
   --thumb-op: 1;
   --thumb-fade-out: 90ms cubic-bezier(0.2, 0.9, 0.1, 1);
   --thumb-fade-in: 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  /* 按压：起手要快（手指已经在动），末段过冲一点再落定 —— 弹簧感。
+     松手走接近临界阻尼：只轻轻回弹一下，不能像弹球。
+     y 轴大于 1 的贝塞尔曲线本身就会冲过目标值，不需要 JS 逐帧算弹簧。 */
+  --thumb-press-in: 260ms cubic-bezier(0.18, 1.42, 0.34, 1);
+  --thumb-press-out: 200ms cubic-bezier(0.3, 1.12, 0.44, 1);
   position: relative;
   display: flex;
   align-items: center;
@@ -77,8 +82,12 @@
 .c-slider__thumb {
   /* 拇指的光学参数也来自 theme（第八个玻璃面），不再自己写一套 --
      要调就去「参数」页调「滑块拇指」，和其它面一样。 */
-  /* 静止时的背景模糊半径（px）。按下时收到 0，见下面的 [data-dragging] 规则 */
-  --thumb-blur-px: calc((4px + 14px * var(--lg)) * var(--glass-blur-k, 0.3));
+  /* 静止时的背景模糊半径（px）。按住时在它基础上 ×1.2，见下面的 [data-dragging] 规则 */
+  --thumb-blur-rest: calc((4px + 14px * var(--lg)) * var(--glass-blur-k, 0.3));
+  --thumb-blur-px: var(--thumb-blur-rest);
+  /* 缩放比例由 Rust 写在行内（1 / 1.6），**不要在这里声明 --thumb-s** ——
+     元素自己的声明会盖掉从 .c-slider 继承下来的值，按下时永远是 1。
+     兜底写在 var() 的第二个参数里（见 transform）。 */
   position: absolute;
   top: 50%;
   left: calc(var(--thumb-w) / 2);
@@ -127,8 +136,11 @@
   -webkit-backdrop-filter: url(#gg-refract) blur(var(--thumb-blur-px))
     saturate(calc(var(--lg-vibrancy) * 100%));
   /* 过渡的是「模糊半径」这个变量，不是 backdrop-filter 本身 ——
-     滤镜列表里带 url() 时不可插值，直接过渡 backdrop-filter 会变成硬切。 */
-  transition: --thumb-blur-px var(--thumb-fade-in);
+     滤镜列表里带 url() 时不可插值，直接过渡 backdrop-filter 会变成硬切。
+     transform 同样要过渡，否则 --thumb-s 一变就是硬跳（按下/松手的动画就没了）。 */
+  transition:
+    transform var(--thumb-press-out),
+    --thumb-blur-px var(--thumb-fade-in);
   box-shadow:
     /* 环境接触影 + 触点影 */
     0 1.5px 4px rgb(0 0 0 / calc(0.26 * var(--shadow-k))),
@@ -141,7 +153,7 @@
     inset 0 1px 0 rgb(255 255 255 / calc(0.95 * var(--lg-css-stroke-alpha, var(--lg-stroke-alpha)))),
     inset 0 -1px 0 rgb(255 255 255 / calc(0.95 * var(--lg-css-stroke-alpha, var(--lg-stroke-alpha)) * var(--hl-bottom))),
     inset 0 -1px 2px rgb(0 0 0 / calc(0.12 * var(--shadow-k)));
-  transform: translateX(calc(var(--travel) * var(--p))) scale(var(--thumb-s));
+  transform: translateX(calc(var(--travel) * var(--p))) scale(var(--thumb-s, 1));
   will-change: transform;
 }
 
@@ -167,14 +179,16 @@
   transition: opacity var(--thumb-fade-out);
 }
 
-/* 按下时背景模糊也收到 0：放大两倍之后的那颗透镜是「清」的。
+/* 按住时背景再糊 20%：拇指被放大、压近，背后的东西该更散一点。
    改的是 --thumb-blur-px 而不是整条 backdrop-filter —— 这样 url(#gg-refract) 不会被覆盖掉，
-   折射在按下时反而最明显，同时模糊还能平滑过渡。
+   折射始终在，模糊还能平滑过渡（滤镜列表里带 url() 时不可插值）。
    整套里只有滑块拇指（单值与区间两处）会动 backdrop-filter：它只有 24×16（按下 48×32），
    面积小到重绘代价可以忽略；大面积玻璃仍然只能改 --lg，不要学这里。 */
 .c-slider[data-dragging="1"] .c-slider__thumb {
-  --thumb-blur-px: 0px;
-  transition: --thumb-blur-px var(--thumb-fade-out);
+  --thumb-blur-px: calc(var(--thumb-blur-rest) * 1.2);
+  transition:
+    transform var(--thumb-press-in),
+    --thumb-blur-px var(--thumb-fade-out);
 }
 
 /* 镜面环：高光沿法线落在朝向光源的一侧（lightDir 向下 → 顶边最亮） */

@@ -31,15 +31,17 @@ export const GLASS_SURFACE_DEFAULTS = Object.freeze({
   // 参考 Kyant0/AndroidLiquidGlass 的示例组件（按钮 lens(12dp, 24dp)、标签栏 lens(24, 24)），
   // 它的位移是带宽的 1–2 倍；这里取中间值 —— 再大会在小件上把边缘读成"错位"。
   chrome: Object.freeze({ band: 26, amount: 15, coating: 0.46, vibrancy: 1.8, strokeAlpha: 0.22, strokeHalf: 0.5, blurK: 0.7 }),
-  panel: Object.freeze({ band: 30, amount: 18, coating: 0.58, vibrancy: 1.8, strokeAlpha: 0.2, strokeHalf: 0.5, blurK: 0.85 }),
-  capsule: Object.freeze({ band: 20, amount: 12, coating: 0.3, vibrancy: 1.8, strokeAlpha: 0.34, strokeHalf: 0.8, blurK: 0.5 }),
+  panel: Object.freeze({ band: 30, amount: 18, coating: 0.7, vibrancy: 1.8, strokeAlpha: 0.2, strokeHalf: 0.5, blurK: 0.85 }),
+  // capsule：描边收到 0.22、顶部晕光关掉 —— 顶栏两枚小胶囊本来就小，
+  // 晕光铺上去只剩一层白雾，看起来像没擦干净。
+  capsule: Object.freeze({ band: 20, amount: 12, coating: 0.3, vibrancy: 1.8, strokeAlpha: 0.22, strokeHalf: 0.8, blurK: 0.5, bloom: 0 }),
   menu: Object.freeze({ band: 24, amount: 14, coating: 0.62, vibrancy: 1.8, strokeAlpha: 0.2, strokeHalf: 0.5, blurK: 0.7 }),
-  toast: Object.freeze({ band: 18, amount: 11, coating: 0.36, vibrancy: 1.8, strokeAlpha: 0.24, strokeHalf: 0.6, blurK: 0.55 }),
-  sheet: Object.freeze({ band: 32, amount: 19, coating: 0.86, vibrancy: 1.8, strokeAlpha: 0.24, strokeHalf: 0.6, blurK: 0.9 }),
+  toast: Object.freeze({ band: 18, amount: 11, coating: 0.36, vibrancy: 1.8, strokeAlpha: 0.24, strokeHalf: 0.6, blurK: 0.55, bloom: 0 }),
+  sheet: Object.freeze({ band: 32, amount: 19, coating: 0.8, vibrancy: 1.8, strokeAlpha: 0.24, strokeHalf: 0.6, blurK: 0.9 }),
   // 悬浮导航：长条、竖直/水平都可能，折射带按短边给，别按长边 —— 否则两端会糊掉
-  dock: Object.freeze({ band: 22, amount: 13, coating: 0.52, vibrancy: 1.8, strokeAlpha: 0.3, strokeHalf: 0.7, blurK: 0.6 }),
+  dock: Object.freeze({ band: 22, amount: 13, coating: 0.52, vibrancy: 1.8, strokeAlpha: 0.3, strokeHalf: 0.7, blurK: 0.6, bloom: 0 }),
   // 拇指只有 24×16：比例提上去会"折起来"，所以留在 0.44 左右
-  thumb: Object.freeze({ band: 7.2, amount: 3.2, coating: 0.34, vibrancy: 1, strokeAlpha: 0, strokeHalf: 0.8, strokeFeather: 0.35, blurK: 1 }),
+  thumb: Object.freeze({ band: 4, amount: 7.6, coating: 0.34, vibrancy: 1, strokeAlpha: 0, strokeHalf: 0.8, strokeFeather: 0.35, blurK: 1 }),
 });
 
 export function glassSurfaceDefaults(id) {

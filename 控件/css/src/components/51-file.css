@@ -166,7 +166,7 @@
 /* 拖入高亮：描边转强调色 + 淡底。颜色之外还借底色变化，
    深色主题下光靠描边深浅不容易分辨。
 
-   `data-over="1"` 是 P3-B2 之后对外的布尔契约（拖拽中为 1），
+   `data-over="1"` 是对外的布尔契约（拖拽中为 1），
    `data-state="over"` 是原有写法；两个选择器并列，谁都不用改。 */
 .c-dropzone[data-state="over"],
 .c-dropzone[data-over="1"] {

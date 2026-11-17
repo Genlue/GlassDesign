@@ -16,7 +16,7 @@ pub fn FormPage() -> impl IntoView {
     let plan = RwSignal::new("pro".to_string());
     let show_dialog = RwSignal::new(false);
 
-    // —— P3-B1：区间 / 组合框 / 令牌 / 日期时间 / 表单编排 ——
+    // —— 区间 / 组合框 / 令牌 / 日期时间 / 表单编排 ——
     let range_price = RwSignal::new((20.0f64, 80.0f64));
     let range_budget = RwSignal::new((250.0f64, 750.0f64));
     let city = RwSignal::new("hangzhou".to_string());
@@ -76,7 +76,7 @@ pub fn FormPage() -> impl IntoView {
     ];
 
     view! {
-        <div class="l-scroll" style="padding:24px 32px 64px">
+        <div class="gd-page">
             <div class="l-stack l-stack--6">
                 <div class="l-stack l-stack--2">
                     <h1 class="c-headline">"表单"</h1>

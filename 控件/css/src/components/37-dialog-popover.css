@@ -146,3 +146,15 @@
     transition-duration: 0s;
   }
 }
+
+/* ---- 入场 ----
+   遮罩是直接出现的（旧实现也不淡入遮罩）；面板自己浮现：
+   比菜单起得更远一点（多 6px 下沉），两级窗口之间才读得出层次。 */
+.c-dialog-scrim[data-state="open"] .c-dialog {
+  animation: gd-sheet-in 240ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+/* 气泡比菜单轻一档：它是指针的附注，不该抢注意力 */
+.c-popover[data-state="open"] {
+  animation: gd-pop-in 180ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}

@@ -42,7 +42,7 @@ pub fn DataPage() -> impl IntoView {
         TableColumn::new("count", "数量").right(),
     ];
 
-    /* ---------------------------------------------------- P3-C 数据类样例 */
+    /* ---------------------------------------------------- 数据类样例 */
 
     let table_columns = vec![
         DataColumn::new("name", "名称").width(180.0).sortable(),
@@ -186,7 +186,7 @@ pub fn DataPage() -> impl IntoView {
         })
         .collect();
 
-    /* ------------------------------------------ P4 万级数据：虚拟滚动样例 */
+    /* ------------------------------------------ 万级数据：虚拟滚动样例 */
 
     // 3 层 × 循环生成：20 组 × 9 目录 × 10 文件 + 200 个父行 = 2000 个可见行。
     let big_tree_selected = RwSignal::new("g0".to_string());
@@ -234,7 +234,7 @@ pub fn DataPage() -> impl IntoView {
         .collect();
 
     view! {
-        <div class="l-scroll" style="padding:24px 32px 64px">
+        <div class="gd-page">
             <div class="l-stack l-stack--6">
                 <Breadcrumb items=vec![
                     Crumb::new("工作区").icon(IconName::HOUSE),

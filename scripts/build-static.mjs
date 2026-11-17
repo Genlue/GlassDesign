@@ -19,7 +19,7 @@ const chrome = CHROME_CANDIDATES.find((p) => existsSync(p));
 if (!chrome) throw new Error('找不到 Chrome/Edge');
 
 const url = process.argv[2] || 'http://127.0.0.1:8777/index.html';
-const out = process.argv[3] || 'index.html';
+const out = process.argv[3] || 'index-static.html';
 const port = 8791;
 const profile = mkdtempSync(join(tmpdir(), 'gd-static-'));
 
@@ -162,13 +162,14 @@ async function main() {
     var r = document.documentElement;
     r.setAttribute('data-theme', r.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
   });
-  // 语言切换靠 Rust 的 Strings 表，静态页做不到 —— 标成不可用，而不是让它看起来能点。
+  // 语言切换靠 Rust 的 Strings 表，静态页做不到。
+  // 只挂提示、不压透明度：静态页里所有控件本来都点不动，
+  // 单独把这一枚压成半透明，反而让人以为是它自己坏了（看起来像「胶囊没做完」）。
   var seg = document.querySelector('.c-seg');
   var cap = seg && seg.closest('.c-capsule');
   if (cap) {
     cap.setAttribute('aria-disabled', 'true');
     cap.setAttribute('title', '静态预览里不可用（到实时画廊切语言）');
-    cap.style.opacity = '.45';
     cap.style.pointerEvents = 'none';
   }
   show(0);
@@ -176,6 +177,13 @@ async function main() {
 </script>`;
 
   let html = shell;
+  // Leptos 的空标记 `<!---->` 掉进 <textarea> 会被当成**正文**（textarea 的内容是
+  // RCDATA，里面的 `<!-- -->` 不是注释）。序列化后还会被转义成 `&lt;!----&gt;`，
+  // 于是静态页的空文本域把那串字符原样显示出来，真正的 placeholder 被顶掉。
+  // 这里的空文本域本来就没有内容，把标记摘掉即可 —— 摘掉之后 placeholder 才露出来。
+  html = html.replace(/(<textarea\b[^>]*>)([\s\S]*?)(<\/textarea>)/gi, (_m, open, body, close) =>
+    open + body.replace(/(?:<!---->|&lt;!----&gt;)/g, '') + close
+  );
   html = html.replace('</head>', `${style}\n</head>`);
   html = html.replace('</body>', `${script}\n</body>`);
   html = html.replace(

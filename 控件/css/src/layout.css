@@ -11,6 +11,9 @@
 
 .l-app {
   position: absolute;
+  /* 10px 内缩**不是设计规范**，是为了让浏览器里的预览读起来像
+     「桌面上的一个窗口」：给页面和视口之间留一圈分隔，四角也才看得见圆角。
+     真宿主窗口里这圈是假的 —— 见文件末尾 `data-shell="host"`。 */
   inset: 10px;
   display: grid;
   /* 展开/收起：**只有 transform 在动**。导航栏是覆盖层，内容列的让位靠
@@ -34,6 +37,18 @@
   background: transparent;
   box-shadow: var(--shadow-window);
   isolation: isolate;
+}
+
+/* 「app 即窗口」：贴满窗口、方角、无投影。
+   —— 宿主（Tauri / Electron）里的窗口本身就是这块 UI，它外面没有第二层
+      桌面可透，也没有窗口管理器帮它画阴影。留着 10px 缝的结果是：
+      内容白让 10px、四边露出一圈壁纸快照、四角的圆弧是画出来的假圆角。
+      浏览器预览不加这个属性，保持「窗口浮在桌面上」的读法。
+      由宿主在 <html> 上写 data-shell="host" 打开（见 应用/ui/dist/index.html）。 */
+html[data-shell="host"] .l-app {
+  inset: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 /* 有导航栏 → 自动两栏。用 :has 而不是加 class，

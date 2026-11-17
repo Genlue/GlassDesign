@@ -18,12 +18,12 @@
   letter-spacing: var(--tracking-caption);
   pointer-events: none;
   opacity: 0;
-  transform: translateY(2px);
-  transition: opacity var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-out);
+  /* 只淡入，不位移：提示是「贴着指针的附注」，文字自己往上挪 2px
+     就是「内容在动」，和菜单入场被砍掉的是同一类毛病。 */
+  transition: opacity var(--dur-1) var(--ease-out);
 }
 
 .c-tip[data-show="1"] {
   opacity: 1;
-  transform: translateY(0);
 }
 

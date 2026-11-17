@@ -8,7 +8,7 @@ pub fn BasicPage() -> impl IntoView {
     let saved = RwSignal::new(false);
 
     view! {
-        <div class="l-scroll" style="padding:24px 32px 64px">
+        <div class="gd-page">
             <div class="l-stack l-stack--6">
                 <div class="l-stack l-stack--2">
                     <h1 class="c-headline">"基础控件"</h1>
@@ -18,14 +18,17 @@ pub fn BasicPage() -> impl IntoView {
                 <div class="l-stack l-stack--3">
                     <SectionTitle>"材质"</SectionTitle>
                     <Card>
-                        <div style="position:relative;height:190px;border-radius:18px;overflow:hidden;background:linear-gradient(115deg,#ff9a62 0%,#ff5f8f 34%,#7b61ff 68%,#2ec5ce 100%)">
+                        // 材质舞台：只是一块彩色底，玻璃才有东西可折。
+                        // 高度压到 128 —— 它是个「衬底」，不是页面的主角；
+                        // 原来 190px 的整幅彩虹把下面的控件全压住了。
+                        <div style="position:relative;height:128px;border-radius:14px;overflow:hidden;background:linear-gradient(115deg,#ff9a62 0%,#ff5f8f 34%,#7b61ff 68%,#2ec5ce 100%)">
                             <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.20) 0 2px,transparent 2px 28px)"></div>
-                            <div style="position:absolute;left:26px;top:24px;color:#fff;font-size:12px;letter-spacing:.04em;opacity:.9">"静态 SVG filter · 无 JavaScript"</div>
-                            <div style="position:absolute;left:26px;bottom:26px;display:flex;align-items:center;gap:14px">
+                            <div style="position:absolute;left:20px;top:18px;color:#fff;font-size:11px;letter-spacing:.04em;opacity:.82">"静态 SVG filter · 无 JavaScript"</div>
+                            <div style="position:absolute;left:20px;bottom:18px;display:flex;align-items:center;gap:12px">
                                 <Capsule size=CapsuleSize::Md>
                                     <span style="font-size:13px;font-weight:500;color:#fff">"Liquid Glass"</span>
                                 </Capsule>
-                                <span style="color:#fff;font-size:12px;opacity:.78">"位移 + 高光贴图在构建期算好"</span>
+                                <span style="color:#fff;font-size:11px;opacity:.72">"位移 + 高光贴图在构建期算好"</span>
                             </div>
                         </div>
                     </Card>
@@ -143,7 +146,7 @@ pub fn BasicPage() -> impl IntoView {
                 </div>
 
                 <Show when=move || saved.get()>
-                    <InlineMessage tone=Tone::Success title="已创建" description="这是 P2 的静态反馈。"
+                    <InlineMessage tone=Tone::Success title="已创建" description="这是静态反馈。"
                         dismissible=true on_dismiss=Callback::new(move |_| saved.set(false)) />
                 </Show>
 

@@ -60,7 +60,7 @@
   background-image:
     radial-gradient(
       140% 56px at 50% 0%,
-      rgb(255 255 255 / calc(0.44 * var(--lg-css-stroke-alpha, var(--lg-stroke-alpha)))) 0%,
+      rgb(255 255 255 / calc(0.44 * var(--lg-bloom, var(--lg-stroke-alpha)))) 0%,
       rgb(255 255 255 / 0) 100%
     ),
     linear-gradient(
@@ -82,9 +82,12 @@
   box-shadow:
     inset 0.9px 0 0 rgb(255 214 168 / calc(0.6 * var(--lg-css-dispersion, var(--lg-dispersion)))),
     inset -0.9px 0 0 rgb(168 216 255 / calc(0.6 * var(--lg-css-dispersion, var(--lg-dispersion)))),
-    /* 外缘白边：不跟 --lg-css-stroke-alpha（那一项在这条管线里恒为 0，
-       写上去等于没画）。悬浮药丸必须有一条硬边，否则读不出「一块」 */
-    inset 0 0 0 0.5px rgb(255 255 255 / 0.46),
+    /* 外缘白边：**必须跟描边参数走**。原来写死 0.46，
+       结果把「描边」调到 0 它还在，调到 1 也不会更亮 —— 用户看到的就是
+       「悬浮导航的边怎么这么重，而且调不动」。
+       现在按 --lg-stroke-alpha 缩放：默认 0.3 → 0.138，是原来三分之一的重量。 */
+    inset 0 0 0 0.5px
+      rgb(255 255 255 / calc(0.46 * var(--lg-css-stroke-alpha, var(--lg-stroke-alpha)))),
     inset 0 0.5px 0 rgb(255 255 255 / calc(0.5 * var(--lg-stroke-alpha))),
     inset 0 -0.5px 0 rgb(255 255 255 / calc(0.5 * var(--lg-stroke-alpha) * var(--hl-bottom))),
     /* 外影比胶囊重一档：它离内容更远，要读成「浮着」而不是「贴着」 */
@@ -111,8 +114,9 @@
   -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   mask-composite: exclude;
-  /* 同上：这一层不跟 --lg-css-stroke-alpha，否则整个环是隐形的 */
-  opacity: calc(0.3 + 0.9 * var(--lg-stroke-alpha));
+  /* 同上：环的亮度只能由描边参数决定。原来写 `0.3 + 0.9×`，
+     等于给了一个 0.3 的地板 —— 调到 0 还剩三成，看上去就是「关不掉」。 */
+  opacity: var(--lg-css-stroke-alpha, var(--lg-stroke-alpha));
   pointer-events: none;
   z-index: 2;
 }
@@ -138,11 +142,17 @@
   box-shadow:
     0 1px 2px rgb(0 0 0 / calc(0.10 * var(--shadow-k))),
     0 0 0 0.5px rgb(0 0 0 / calc(0.06 * var(--shadow-k)));
+  /* 只过渡颜色。**不要过渡 transform**：指针扫过时 1.05 的缩放会让图标
+     随指针一路放大缩小，读起来就是「图标自己在漂」；缩放在分数像素上
+     还会让内部图形重新栅格化，边缘跟着抖。按下同理，用底色表达压下去。 */
   transition:
     background-color var(--dur-1) var(--ease-out),
     color var(--dur-1) var(--ease-out),
     transform var(--dur-2) var(--ease-out),
     box-shadow var(--dur-1) var(--ease-out);
+  /* 常驻合成层：缩放结束时不销毁图层，内部图标不会在最后一帧被重新栅格化 */
+  will-change: transform;
+  transform-origin: 50% 50%;
 }
 
 .c-dock__item:hover {
@@ -152,6 +162,7 @@
 }
 
 .c-dock__item:active {
+  background: color-mix(in srgb, var(--surface-control-solid) 82%, var(--text-primary));
   transform: scale(0.96);
 }
 
@@ -229,7 +240,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   角标（P3 追加）
+   角标
    —— 40 分区原本没有角标：旧库的 Dock 只有图标，没有「有几条未读」这一层。
       补它是因为导航项经常要表达计数，而数字不该挤在 40px 的圆钮里
       （挤进去图标就得缩，圆钮的等宽假设也会破）。

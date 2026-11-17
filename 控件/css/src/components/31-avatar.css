@@ -49,3 +49,25 @@
 .c-avatar__status--busy { background: var(--danger); }
 .c-avatar__status--away { background: var(--warning); }
 
+/* --------------------------------------------------------------------------
+   状态点被圆裁掉一半（现象是头像右下角一道红色月牙）
+   —— 状态点是 `.c-avatar` 的绝对定位子元素，而 `.c-avatar` 为了裁方形图片
+      写了 `overflow:hidden`：点落在圆弧外侧的那半边被切掉了。
+      裁切的需求只在图片上，所以把 overflow 收回给 `img`，
+      头像本体改成 visible —— 背景色仍是 border-radius 的圆，不受影响。
+   sm 档（20px）的 9px 点占比接近一半，另按尺寸缩一档。
+   -------------------------------------------------------------------------- */
+.c-avatar {
+  overflow: visible;
+}
+
+.c-avatar > img {
+  border-radius: inherit;
+  overflow: hidden;
+}
+
+.c-avatar--sm .c-avatar__status {
+  width: 7px;
+  height: 7px;
+  box-shadow: 0 0 0 1.5px var(--surface-content);
+}

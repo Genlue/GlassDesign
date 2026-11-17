@@ -1,5 +1,9 @@
 // 把 控件/css/src 的 @import 展开成单文件 控件/css/glass.css。
-// 顺序是契约：tokens → optics → base → layout → components（64 个分区，按文件名排序）。
+// 顺序是契约：tokens → base → layout → components → **optics 收尾**。
+// optics 必须最后：它是每个玻璃面的最终参数（schema 的产物）。
+// 组件的材质分档（17-materials）也写 --glass-blur-k，那是"档位默认值"；
+// 相等特异度下后写的赢，所以 optics 排前面会被整片盖掉（曾导致 chrome/panel/menu/sheet
+// 四块面的模糊比 schema 小/大一大截）。
 import { readFileSync, writeFileSync, statSync } from 'node:fs';
 import { dirname, resolve, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,13 +22,13 @@ function inline(abs, ancestors = []) {
   return `\n/* ===== ${rel} ===== */\n${next}`;
 }
 
-const parts = ['tokens.css', 'optics.css', 'base.css', 'layout.css', 'components.css'].map((f) =>
+const parts = ['tokens.css', 'base.css', 'layout.css', 'components.css', 'optics.css'].map((f) =>
   inline(resolve(SRC, f))
 );
 
 const out = `/* 由 scripts/build-css.mjs 生成，请勿手改。
    源：控件/css/src/{tokens,optics,base,layout,components}.css
-   顺序是契约：tokens → optics → base → layout → components（64 个分区）。 */
+   顺序是契约：tokens → base → layout → components（64 个分区）→ optics（各面最终参数，必须最后）。 */
 ${parts.join('\n')}
 `;
 

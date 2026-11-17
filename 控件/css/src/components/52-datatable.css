@@ -304,8 +304,7 @@
 }
 
 .c-datatable[data-col-dragging="1"] {
-  cursor: grabbing;
-}
+  }
 
 .c-datatable__th.is-dragging {
   color: var(--text-tertiary);
@@ -378,7 +377,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   列拖拽属性映射（P3-C 追加）
+   列拖拽属性映射
    —— DOM 契约用 data-drag="1" / data-drop="before|after"；视觉规则沿用
       上面的 .is-dragging / .is-drop-*，这里只做「属性 → 视觉」的映射，
       不新增任何尺寸或颜色。
@@ -390,8 +389,7 @@
 }
 
 .c-datatable[data-drag="1"] {
-  cursor: grabbing;
-}
+  }
 
 .c-datatable__th[data-drop="before"] {
   box-shadow: inset 2px 0 var(--accent);
@@ -409,7 +407,7 @@
 }
 
 /* ==========================================================================
-   行内编辑 / 行焦点（P4 追加）
+   行内编辑 / 行焦点
    —— 全部追加在上面的度量之后，一个字都没改。这里只有一条硬约束：
       编辑态**不许改变行高**。虚拟化的窗口数学是「start × --dt-row-h」，
       行高一变，撑高行与实际 DOM 位置立刻错位（红线 5）。

@@ -6,6 +6,7 @@ pub mod nav;
 pub mod overlays;
 pub mod panels;
 pub mod toolbar;
+pub mod tuner;
 
 pub use appearance::AppearancePage;
 pub use basic::BasicPage;
@@ -15,3 +16,4 @@ pub use nav::NavPage;
 pub use overlays::OverlayPage;
 pub use panels::PanelsPage;
 pub use toolbar::ToolbarPage;
+pub use tuner::TunerPage;

@@ -19,7 +19,7 @@ pub fn AppearancePage() -> impl IntoView {
     let presets = SwatchItem::accents();
 
     view! {
-        <div class="l-scroll" style="padding:24px 32px 64px">
+        <div class="gd-page">
             <div class="l-stack l-stack--6">
                 <div class="l-stack l-stack--2">
                     <h1 class="c-headline">"外观"</h1>

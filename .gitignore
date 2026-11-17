@@ -1,5 +1,8 @@
 /target
-/应用/ui/dist
+# dist 里只有 index.html 是「源」（画廊壳层 + 宿主背景取值），其余全是产物：
+# wasm / 胶水要能随时重建，不该进版本库；壳层 HTML 反过来必须留得住。
+/应用/ui/dist/*
+!/应用/ui/dist/index.html
 /.shots*
 /.tmp-*
 node_modules

@@ -15,14 +15,17 @@
         "minWidth": 900,
         "minHeight": 600,
         "decorations": false,
-        "transparent": true,
+        "transparent": false,
         "center": true,
-        "visible": true
+        "visible": true,
+        "label": "main",
+        "backgroundColor": "#101014"
       }
     ],
     "security": {
       "csp": null
-    }
+    },
+    "withGlobalTauri": true
   },
   "bundle": {
     "active": false,
