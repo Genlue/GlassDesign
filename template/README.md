@@ -11,6 +11,12 @@
 └── src-tauri/         宿主：无边框不透明窗口 + 桌面截屏
 ```
 
+> 仓库里这三份清单叫 `Cargo.toml.liquid`。cargo-generate 会把 `.liquid` 渲染掉、
+> 后缀去掉（`README.md.liquid` → `README.md`），生成出来就是正常的 `Cargo.toml`。
+> 这么做是因为 `[package] name` 里的 `{{project-name}}` 不是合法包名 —— 清单叫
+> `Cargo.toml` 的话，谁把这个仓库当 git 依赖引进项目，cargo 递归扫检出目录时
+> 就会撞上它并刷两行 `invalid character` 错误。生成出来的项目不受影响。
+
 ## 三步跑起来
 
 ```sh

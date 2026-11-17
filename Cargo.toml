@@ -1,10 +1,14 @@
 [workspace]
 resolver = "2"
 members = ["控件", "host", "应用/ui", "应用/src-tauri"]
-# `template/` 里的清单用 `{{project-name}}` 占位，不是合法包名。
-# 不排除的话，任何人把这个仓库当 git 依赖引进来，cargo 都会在解析阶段
-# 扫到它并打两行 `invalid character '{' in package name` —— 构建仍会成功，
-# 但每次首次拉取都刷一遍红字。模板本来就是给用户拷出去用的，不属于本工作区。
+# 模板是给用户拷出去用的，不属于本工作区。
+#
+# 光靠这一行不够：cargo 处理 **git 依赖**时会递归扫检出目录里所有名为
+# `Cargo.toml` 的文件（`PathSource::new_recursive`），不理会 workspace.exclude。
+# 模板的清单用 `{{project-name}}` 占位、不是合法包名，被扫到就会打两行
+# `invalid character '{' in package name` —— 构建仍成功，但下游每次首次拉取都红一次。
+# 所以模板里那三份清单改名为 `Cargo.toml.liquid`：cargo-generate 会渲染并去掉
+# 后缀（`fetch.rs` 的 LIQUID_SUFFIX），而 cargo 的扫描只认字面量 `Cargo.toml`。
 exclude = ["template"]
 
 [profile.release]
