@@ -51,6 +51,8 @@ glass-design = { git = "https://github.com/<owner>/GlassDesign", tag = "v0.8.0" 
 
 tag 比分支可靠：分支会动，tag 不会。
 
+已实测：`tag = "v0.8.0"` 能被 cargo 直接解析到仓库里的 `控件/`（workspace 成员），不需要发布到 crates.io。自己的项目之间互相引用，这条路就够了；crates.io 只在要给别人用时才有意义。
+
 ### 2.3 path（vendor 进仓库）
 
 ```toml
