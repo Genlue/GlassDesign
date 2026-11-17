@@ -1,6 +1,11 @@
 [workspace]
 resolver = "2"
 members = ["控件", "host", "应用/ui", "应用/src-tauri"]
+# `template/` 里的清单用 `{{project-name}}` 占位，不是合法包名。
+# 不排除的话，任何人把这个仓库当 git 依赖引进来，cargo 都会在解析阶段
+# 扫到它并打两行 `invalid character '{' in package name` —— 构建仍会成功，
+# 但每次首次拉取都刷一遍红字。模板本来就是给用户拷出去用的，不属于本工作区。
+exclude = ["template"]
 
 [profile.release]
 opt-level = "s"
