@@ -4,6 +4,20 @@
 
 规则：新增 prop / 组件 = minor；改 props 形状、删组件、改 DOM 或键盘契约、改贴图尺寸 = major；CSS 变量改名先加别名再删。
 
+## [0.8.2] - 2026-11-17
+
+只动打包形态，代码零变化。
+
+### Fixed
+
+- **模板清单污染下游的依赖解析**：`template/` 里三份 `Cargo.toml` 的
+  `[package] name` 用 `{{project-name}}` 占位，不是合法包名。cargo 处理 **git 依赖**时
+  会递归扫检出目录里所有名为 `Cargo.toml` 的文件（`PathSource::new_recursive`），
+  不理会 `workspace.exclude` —— 于是任何人把这个仓库当 git 依赖引进来，首次拉取
+  都会看到两行 `error: invalid character '{' in package name`。构建本身能过，但红字
+  是真的。三份清单改名为 `Cargo.toml.liquid`：cargo 只认字面量 `Cargo.toml`，扫不到；
+  cargo-generate 会把 `.liquid` 渲染掉并去掉后缀，生成出来的项目照旧。
+
 ## [0.8.1] - 2026-11-17
 
 三处「文档写了、代码没做到」的收口，外加一个 API 缺口。全部向后兼容。

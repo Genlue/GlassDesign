@@ -1315,7 +1315,7 @@ dependencies = [
 
 [[package]]
 name = "glass-design"
-version = "0.8.1"
+version = "0.8.2"
 dependencies = [
  "js-sys",
  "leptos",
@@ -1347,7 +1347,7 @@ dependencies = [
 
 [[package]]
 name = "glass-design-host"
-version = "0.8.1"
+version = "0.8.2"
 dependencies = [
  "base64 0.22.1",
  "png",

@@ -106,7 +106,7 @@ install() ──▶ <style id="gd-styles"> + <div id="gd-glass-defs">
 ## 作为依赖使用
 
 ```sh
-cargo add glass-design --git https://github.com/Genlue/GlassDesign --tag v0.8.0
+cargo add glass-design --git https://github.com/Genlue/GlassDesign --tag v0.8.2
 cargo add leptos --features csr
 cargo add wasm-bindgen
 ```

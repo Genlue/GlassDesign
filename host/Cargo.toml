@@ -1,6 +1,6 @@
 [package]
 name = "glass-design-host"
-version = "0.8.1"
+version = "0.8.2"
 edition = "2021"
 rust-version = "1.88"
 description = "Tauri 2 host glue for glass-design: window setup, desktop backdrop capture, wallpaper wiring"
