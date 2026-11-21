@@ -29,11 +29,19 @@
   height: var(--toolbar-h);
   padding: 0 var(--topbar-pad-r, var(--s-6)) 0 var(--topbar-pad-l, var(--s-7));
   background: transparent;
-  pointer-events: none; /* 空白处留给窗口拖动 */
+  pointer-events: auto; /* 必须接收命中，Tauri data-tauri-drag-region 才能拖窗 */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .c-topbar > * {
   pointer-events: auto;
+}
+
+.c-topbar input,
+.c-topbar textarea {
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .c-topbar__lead {
@@ -186,11 +194,11 @@
   font-weight: 500;
 }
 
-/* 「圆」型胶囊：不再做成正方形圆圈，而是一枚短胶囊。
-   宽高由内件 + 左右留白决定，内容变长它会自己变长。 */
-.c-capsule--round {
-  padding: 0 4px;
-  justify-content: center;
+/* 固定贴图档不能在 flex 里缩小；自适应内容使用 Auto。 */
+.c-capsule--round,
+.c-capsule[data-size] {
+  box-sizing: border-box;
+  flex: none;
 }
 
 /* 只装一个按钮时才是正圆（34×34）。多按钮一律回到短胶囊 —— 一排气泡不是"胶囊" */
@@ -201,30 +209,35 @@
 }
 
 /* 胶囊里的图标按钮也做成短胶囊（34×28），不做成正圆 */
-.c-capsule > .c-iconbtn {
+.c-capsule > .c-iconbtn,
+.c-capsule > [data-gd-widget="icon-button"] > .c-iconbtn {
   width: calc(var(--ctl-h) + 6px);
 }
 
 /* 必须排在上面那条之后：同特异度，后写的赢 */
-.c-capsule--circle > .c-iconbtn {
+.c-capsule--circle > .c-iconbtn,
+.c-capsule--circle > [data-gd-widget="icon-button"] > .c-iconbtn {
   width: var(--ctl-h, 28px);
   height: var(--ctl-h, 28px);
   border-radius: var(--r-pill);
 }
 
 /* 只留「色调」这一层语义，尺寸交给上面的变量，不再重复声明 */
-.c-capsule > .c-iconbtn--tonal {
+.c-capsule > .c-iconbtn--tonal,
+.c-capsule > [data-gd-widget="icon-button"] > .c-iconbtn--tonal {
   background: var(--surface-control-hover);
 }
 
-.c-capsule > .c-iconbtn--tonal:hover {
+.c-capsule > .c-iconbtn--tonal:hover,
+.c-capsule > [data-gd-widget="icon-button"] > .c-iconbtn--tonal:hover {
   background: var(--surface-control-active);
 }
 
 
 /* 胶囊里的分段控件不再自带一层底色，避免轻材质叠轻材质。
    尺寸已经由上面的 --ctl-* 继承，这里只管「别再画一层轨道」。 */
-.c-capsule > .c-seg {
+.c-capsule > .c-seg,
+.c-capsule > [data-gd-widget="segmented"] > .c-seg {
   background: transparent;
 }
 

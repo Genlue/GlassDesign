@@ -8,7 +8,7 @@
 │   ├── src/lib.rs     bootstrap(App) + 一页 AppShell
 │   ├── wallpaper.js   壁纸接线（host/assets/wallpaper.js 的副本）
 │   └── index.html     最小壳
-└── src-tauri/         宿主：无边框不透明窗口 + 桌面截屏
+└── src-tauri/         宿主：无边框不透明窗口 + 壳层接线
 ```
 
 > 仓库里这三份清单叫 `Cargo.toml.liquid`。cargo-generate 会把 `.liquid` 渲染掉、
@@ -63,11 +63,11 @@ cargo run -p {{project-name}}
 
 ## 壁纸是怎么来的
 
-`ui/wallpaper.js` 是 `glass-design-host` 里 `WALLPAPER_JS` 的副本（源文件 `host/assets/wallpaper.js`）。`index.html` 用普通 `<script src="wallpaper.js">` 引入它，而 `tauri.conf.json` 的 `app.withGlobalTauri` 必须为 `true`，否则脚本拿不到 `window.__TAURI__`，只会在浏览器模式下空转。
+`ui/wallpaper.js` 是 `glass-design-host` 里 `WALLPAPER_JS` 的副本（源文件 `host/assets/wallpaper.js`）。`index.html` 用普通 `<script src="wallpaper.js">` 引入它，而 `tauri.conf.json` 的 `app.withGlobalTauri` 必须为 `true`，否则脚本拿不到 `window.__TAURI__`，不会打开宿主全铺模式（`data-shell="host"`）。
 
-- 在宿主里：它调 `capture_backdrop` 截「窗口背后的屏幕」，把 PNG 写进 `#wallpaper` 的 `--wallpaper-image`；窗口移动 / 缩放 / 桌面变化时重截。
-- 在浏览器里：保持 `tokens.css` 的合成壁纸，玻璃折的仍是 `#wallpaper`，观感一致，只是像素来源不同。
-- 截屏失败或拿到纯黑帧只 `console.warn` 一次，退回合成背景，不会把界面搞崩。
+- 在宿主里：它检测到 `window.__TAURI__` 后在 `<html>` 上写 `data-shell="host"`（去掉浏览器预览的 10px 外框），并保持 `#wallpaper` 使用 `tokens.css` 的内置合成渐变壁纸（`data-source="demo"`）。
+- 在浏览器里：同样使用内置合成壁纸，并保留 10px 浮窗预览外框。
+- 不进行桌面截屏，也不挂载 `WDA_EXCLUDEFROMCAPTURE`，因此远程桌面、系统截图、录屏与任务栏预览均正常工作。
 
 真实项目里不必维护这份副本：`glass_design_host::WALLPAPER_JS` 是个 `&str` 常量，可以在构建期落盘到 `ui/wallpaper.js`（如加进 build-dependencies 由 `build.rs` 写出，和仓库里 `scripts/sync-host-assets.mjs` 一个思路）。改了 `host/assets/wallpaper.js` 记得同步这份副本。
 

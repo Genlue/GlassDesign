@@ -128,28 +128,40 @@ ${built.map((b) => b.filter).join('\n')}
 </svg>
 `;
 
+// Keep the material base until the corresponding inline definition is available.
+// In particular, a missing asset must not replace blur with a broken url() filter.
+const optical = (b) => `:root:has(#gd-glass-${b.id}) ${b.css}`;
 const css = `/* 由 scripts/build-glass.mjs 生成，请勿手改。
    静态 SVG filter：位移 + 高光贴图在构建期算好，运行时没有 JavaScript。 */
-${built
-  .map((b) => {
-    // 原有 4 档（胶囊/拇指）保持原样：尺寸由形状决定，不加 box-sizing。
-    // 新档位是 opt-in：只有 data-glass 命中时才写死边框盒，避免碰到默认布局。
-    const sizing = b.tier
-      ? `  box-sizing: border-box;
+${built.map((b) => {
+  const sizing = b.tier
+    ? `  box-sizing: border-box;
   border-radius: ${b.r}px;
-  /* 尺寸档的前提是「元素真的这么大」：flex 子项默认会缩，缩了贴图就对不上。 */
   flex: none;
-${b.unclamp ? '  /* 只有档位自己说了算：max-width/height 会把它压回可变尺寸。 */\n  max-width: none;\n  max-height: none;\n' : ''}`
-      : `  justify-content: center;
-`;
-    return `${b.css} {
+${b.unclamp ? '  max-width: none;\n  max-height: none;\n' : ''}`
+    : '  justify-content: center;\n';
+  return `${b.css} {
   width: ${b.w}px;
   height: ${b.h}px;
-${sizing}  -webkit-backdrop-filter: blur(calc(${b.blur} * var(--glass-blur-k, ${b.blurK ?? 1}))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-${b.id});
-  backdrop-filter: blur(calc(${b.blur} * var(--glass-blur-k, ${b.blurK ?? 1}))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-${b.id});
-}`;
-  })
-  .join('\n\n')}
+${sizing}}`;
+}).join('\n\n')}
+
+@supports (backdrop-filter: url(#gd-glass-capsule-34)) {
+${built.map((b) => {
+  const filter = `blur(calc(${b.blur} * var(--glass-blur-k, ${b.blurK ?? 1}))) saturate(calc(var(--lg-vibrancy) * 100%)) url(#gd-glass-${b.id})`;
+  return `  ${optical(b)} {
+    backdrop-filter: ${filter};
+${b.id === 'thumb' ? '' : `    /* Once the SVG takes over the optical layer, don't draw two coatings. */
+    background: none !important;
+    --lg-css-stroke-alpha: 0;
+    --lg-css-dispersion: 0;
+`}  }${b.id === 'thumb' ? '' : `
+  ${optical(b)}::before,
+  ${optical(b)}::after {
+    opacity: 0 !important;
+  }`}`;
+}).join('\n\n')}
+}
 `;
 
 mkdirSync(resolve(ROOT, '控件/assets'), { recursive: true });

@@ -31,7 +31,7 @@ body {
   -webkit-user-select: none;
 }
 
-/* —— 壁纸层：窗口是透明的，玻璃材质靠它透出内容 —— */
+/* —— 壁纸层：玻璃材质的底层输入，默认使用内置合成渐变 --wallpaper —— */
 #wallpaper {
   position: fixed;
   inset: 0;
@@ -41,8 +41,10 @@ body {
   transition: opacity var(--dur-3) var(--ease-out);
 }
 
+/* 可选：应用显式传入 --wallpaper-image 与 data-has-image="1" 时覆盖默认渐变；
+   未设置 --wallpaper-image 时回落到内置合成渐变，避免背景变黑或变空。 */
 #wallpaper[data-has-image="1"] {
-  background: var(--wallpaper-image) center / cover no-repeat;
+  background: var(--wallpaper-image, var(--wallpaper)) center / cover no-repeat;
 }
 
 h1, h2, h3, h4, h5, h6, p, figure {

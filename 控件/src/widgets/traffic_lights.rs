@@ -6,6 +6,7 @@ use leptos::prelude::*;
 const GLYPH_CLOSE: &str = "M9 9l10 10M19 9L9 19";
 const GLYPH_MIN: &str = "M8 14h12";
 const GLYPH_ZOOM: &str = "M8 8h10L8 18zM20 20H10l10-10z";
+const GLYPH_RESTORE: &str = "M6 6h10L6 16zM22 22H12l10-10z";
 
 /// 窗口红绿灯（macOS 三灯）。
 ///
@@ -14,22 +15,29 @@ const GLYPH_ZOOM: &str = "M8 8h10L8 18zM20 20H10l10-10z";
 #[component]
 pub fn TrafficLights(
     /// 窗口失焦：三灯统一退成中性灰，且不出图形
-    #[prop(into, optional)] focused: MaybeProp<bool>,
+    #[prop(into, optional)]
+    focused: MaybeProp<bool>,
     /// 有未保存修改：红灯中心一枚实心圆点
-    #[prop(optional)] dirty: bool,
+    #[prop(into, optional)]
+    dirty: MaybeProp<bool>,
     /// 规范展示用：不悬停也显示图形
-    #[prop(optional)] reveal: bool,
+    #[prop(optional)]
+    reveal: bool,
+    /// 最大化时，绿灯改为还原窗口。
+    #[prop(into, optional)]
+    maximized: MaybeProp<bool>,
     #[prop(optional)] on_close: Option<Callback<()>>,
     #[prop(optional)] on_minimize: Option<Callback<()>>,
     #[prop(optional)] on_zoom: Option<Callback<()>>,
 ) -> impl IntoView {
     view! {
         <div
-            class="c-traffic"
+            class="c-traffic" data-no-drag="true" data-tauri-drag-region="false"
             data-focused=move || {
                 if focused.get().unwrap_or(true) { "1" } else { "0" }
             }
-            data-dirty=if dirty { "1" } else { "0" }
+            data-dirty=move || if dirty.get().unwrap_or(false) { "1" } else { "0" }
+            data-maximized=move || if maximized.get().unwrap_or(false) { "1" } else { "0" }
             data-reveal=if reveal { "1" } else { "0" }
         >
             <Light
@@ -39,7 +47,7 @@ pub fn TrafficLights(
                 glyph=GLYPH_CLOSE
                 stroke=4.5
                 filled=false
-                busy=dirty
+                busy=true
                 on_click=on_close
             />
             <Light
@@ -60,6 +68,7 @@ pub fn TrafficLights(
                 stroke=0.0
                 filled=true
                 busy=false
+                maximized=maximized
                 on_click=on_zoom
             />
         </div>
@@ -75,14 +84,15 @@ fn Light(
     stroke: f64,
     filled: bool,
     busy: bool,
+    #[prop(optional)] maximized: MaybeProp<bool>,
     on_click: Option<Callback<()>>,
 ) -> impl IntoView {
     view! {
         <button
             class=format!("c-traffic__light c-traffic__light--{kind}")
             type="button"
-            title=title
-            aria-label=label
+            title=move || if maximized.get().unwrap_or(false) { "还原" } else { title }
+            aria-label=move || if maximized.get().unwrap_or(false) { "还原窗口" } else { label }
             on:click=move |_| {
                 if let Some(cb) = on_click {
                     cb.run(());
@@ -95,7 +105,7 @@ fn Light(
                 {busy.then(|| view! { <circle class="c-traffic__dot" cx="14" cy="14" r="5"></circle> })}
                 <g class="c-traffic__glyph">
                     <path
-                        d=glyph
+                        d=move || if maximized.get().unwrap_or(false) { GLYPH_RESTORE } else { glyph }
                         fill=if filled { "currentColor" } else { "none" }
                         stroke=if filled { "none" } else { "currentColor" }
                         stroke-width=format!("{stroke}")

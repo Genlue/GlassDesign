@@ -11,7 +11,7 @@ Windows 桌面界面库：**Tauri 2 + Rust + Leptos（CSR）+ 构建期预计算
 | 目录 | 角色 | 谁能依赖谁 |
 |---|---|---|
 | `控件/` | **界面库本体**，crate `glass-design` | 只依赖自己 `Cargo.toml` 里的 crates |
-| `host/` | 宿主胶水，crate `glass-design-host`：窗口装配、桌面截屏、壁纸 | 依赖 tauri + windows，不依赖 `控件/` |
+| `host/` | 宿主胶水，crate `glass-design-host`：窗口壳层与壁纸接线 | 只依赖 tauri，不依赖 `控件/` |
 | `应用/` | 使用者：`ui/` 画廊（wasm）、`src-tauri/` 宿主 | 依赖 `控件/`、`host/` 与 `scripts/` 的产物 |
 | `scripts/` | 构建期工具：CSS、贴图、图标、打包、截图 | 只读 `控件/`，写它的产物 |
 
@@ -31,8 +31,8 @@ GlassDesign/
 │   └── assets/glass-defs.svg       预计算位移/高光贴图 + 静态 filter
 ├── 应用/
 │   ├── ui/                        Leptos 画廊（九个分区，含「调节」）
-│   └── src-tauri/                 无边框窗口 + 背景截屏命令
-├── host/                          宿主胶水 crate（窗口装配 / 截屏 / 壁纸）
+│   └── src-tauri/                 无边框窗口 + 宿主壳层
+├── host/                          宿主胶水 crate（窗口壳层 / 壁纸接线）
 ├── scripts/                       构建与验证工具（见 docs/03）
 ├── docs/                          四篇：架构 / 组件契约 / 构建验证 / 作为库分发
 ├── template/                      cargo-generate 模板（三步起一个新项目）
@@ -41,6 +41,10 @@ GlassDesign/
 ```
 
 ---
+
+## JavaScript 宿主
+
+不使用 Leptos 应用壳的前端可以通过 [glass-web](web/README.md) 直接挂载 GlassDesign 控件。Windows 构建脚本为 `.\scripts\build-web.ps1 -OutDir <目录>`。
 
 ## 三分钟跑起来
 
@@ -87,7 +91,7 @@ install() ──▶ <style id="gd-styles"> + <div id="gd-glass-defs">
 两条硬约束：
 
 1. **贴图尺寸必须等于元素尺寸。** Chromium 的 `feImage` 不能可靠拉伸预计算贴图，所以玻璃按 11 个固定档位生成（胶囊 34/112/180、拇指 24×16、面板三档、菜单两档、Sheet、Toast）；不在档位里的走 `Auto`：纯 CSS 涂层，没有位移折射。
-2. **玻璃折的是 `#wallpaper`。** `backdrop-filter` 只能采窗口内的像素，窗口外的桌面它看不见。所以页面最底层必须是一张"桌面快照"：宿主（Tauri）实时截屏喂进来，浏览器预览用合成桌面顶上。内容面留 94% 不透明，桌面只透上来一层气氛。
+2. **玻璃折的是 `#wallpaper`。** `backdrop-filter` 只能采窗口内的像素。页面最底层默认铺一层内置合成渐变壁纸（`tokens.css` 的 `--wallpaper`），不再进行桌面实时截屏或挂载 `WDA_EXCLUDEFROMCAPTURE`，从而避免显卡驱动黑屏问题，并保证远程桌面、系统截图、录屏与任务栏预览正常工作。内容面留 94% 不透明，背景只透上来一层气氛。
 
 ---
 

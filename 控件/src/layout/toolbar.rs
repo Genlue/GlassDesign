@@ -1,10 +1,12 @@
 use leptos::prelude::*;
 
-/// 窗口顶栏。空白处可拖窗；内部交互区标 `data-no-drag`。
+use crate::base::icon::{Icon, IconName};
+
+/// 窗口顶栏。空白处与标题可拖窗；内部胶囊与交互控件自动排除。
 #[component]
 pub fn Toolbar(children: Children) -> impl IntoView {
     view! {
-        <div class="c-topbar" data-tauri-drag-region="true">
+        <div class="c-topbar" data-tauri-drag-region="deep">
             {children()}
         </div>
     }
@@ -70,13 +72,18 @@ pub fn Capsule(
     #[prop(optional)] size: CapsuleSize,
     /// 额外类名。布局需要按位置挑中某枚胶囊时用（例如 `.l-chrome__toggle`
     /// 要靠 `:has()` 被顶到导航栏右上角），不要用它改材质。
-    #[prop(into, optional)] class: String,
+    #[prop(into, optional)]
+    class: String,
 ) -> impl IntoView {
-    let (cls, width) = match size {
-        CapsuleSize::Auto => ("c-capsule", None),
-        CapsuleSize::Sm => ("c-capsule", Some("112")),
-        CapsuleSize::Md => ("c-capsule", Some("180")),
-        CapsuleSize::Round => ("c-capsule c-capsule--round", None),
+    let (cls, width, glass) = match size {
+        CapsuleSize::Auto => ("c-capsule", None, None),
+        CapsuleSize::Sm => ("c-capsule", Some("112"), Some("capsule-112")),
+        CapsuleSize::Md => ("c-capsule", Some("180"), Some("capsule-180")),
+        CapsuleSize::Round => (
+            "c-capsule c-capsule--round c-capsule--circle",
+            None,
+            Some("capsule-34"),
+        ),
     };
     let cls = if class.is_empty() {
         cls.to_string()
@@ -84,6 +91,73 @@ pub fn Capsule(
         format!("{cls} {class}")
     };
     view! {
-        <div class=cls data-size=width data-glass="capsule">{children()}</div>
+        <div class=cls data-size=width data-glass=glass data-tauri-drag-region="false">{children()}</div>
+    }
+}
+
+/// 前进 / 后退双按钮玻璃胶囊（`.c-capsule--nav` + `.c-navpair__btn` + `.c-navpair__sep`）。
+///
+/// 常见于内容页左上角（`<ToolbarLead>` 内），中间以细线分隔；
+/// 禁用态自动降透明度并关闭指针命中。
+#[component]
+pub fn NavPair(
+    #[prop(into, optional)] can_back: MaybeProp<bool>,
+    #[prop(into, optional)] can_forward: MaybeProp<bool>,
+    #[prop(optional)] on_back: Option<Callback<()>>,
+    #[prop(optional)] on_forward: Option<Callback<()>>,
+    #[prop(into, optional)] back_label: String,
+    #[prop(into, optional)] forward_label: String,
+    #[prop(into, optional)] class: String,
+) -> impl IntoView {
+    let back_lbl = if back_label.is_empty() {
+        "后退".to_string()
+    } else {
+        back_label
+    };
+    let fwd_lbl = if forward_label.is_empty() {
+        "前进".to_string()
+    } else {
+        forward_label
+    };
+    let cls = if class.is_empty() {
+        "c-capsule--nav".to_string()
+    } else {
+        format!("c-capsule--nav {class}")
+    };
+    let back_disabled = move || !can_back.get().unwrap_or(false);
+    let fwd_disabled = move || !can_forward.get().unwrap_or(false);
+
+    view! {
+        <Capsule class=cls>
+            <button
+                type="button"
+                class="c-navpair__btn"
+                disabled=back_disabled
+                aria-label=back_lbl.clone()
+                title=back_lbl
+                on:click=move |_| {
+                    if let Some(cb) = on_back {
+                        cb.run(());
+                    }
+                }
+            >
+                <Icon name=IconName::CHEVRON_LEFT size=15 />
+            </button>
+            <span class="c-navpair__sep" aria-hidden="true"></span>
+            <button
+                type="button"
+                class="c-navpair__btn"
+                disabled=fwd_disabled
+                aria-label=fwd_lbl.clone()
+                title=fwd_lbl
+                on:click=move |_| {
+                    if let Some(cb) = on_forward {
+                        cb.run(());
+                    }
+                }
+            >
+                <Icon name=IconName::CHEVRON_RIGHT size=15 />
+            </button>
+        </Capsule>
     }
 }

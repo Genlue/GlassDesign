@@ -31,14 +31,14 @@ fn window_pages(current: u32, total: u32) -> Vec<Option<u32>> {
 #[component]
 pub fn Pagination(
     #[prop(into, optional)] page: MaybeProp<u32>,
-    #[prop(optional)] total_pages: u32,
+    #[prop(into, optional)] total_pages: MaybeProp<u32>,
     #[prop(optional)] on_change: Option<Callback<u32>>,
     #[prop(into, optional)] label: String,
 ) -> impl IntoView {
-    let total = total_pages.max(1);
-    let current = move || page.get().unwrap_or(1).clamp(1, total);
+    let total = move || total_pages.get().unwrap_or(1).max(1);
+    let current = move || page.get().unwrap_or(1).clamp(1, total());
     let go = move |p: u32| {
-        let p = p.clamp(1, total);
+        let p = p.clamp(1, total());
         if p != current() {
             if let Some(cb) = on_change {
                 cb.run(p);
@@ -47,7 +47,7 @@ pub fn Pagination(
     };
 
     let pages = move || {
-        window_pages(current(), total)
+        window_pages(current(), total())
             .into_iter()
             .map(|p| match p {
                 Some(n) => view! {
@@ -86,7 +86,7 @@ pub fn Pagination(
                 <div class="c-pagination__pages">{pages}</div>
                 <button class="c-pagination__btn c-pagination__nav" type="button"
                     aria-label=move || t().next_page.to_string() title=move || t().next_page.to_string()
-                    aria-disabled=move || (current() >= total).then_some("true")
+                    aria-disabled=move || (current() >= total()).then_some("true")
                     on:click=move |_| go(current() + 1)>
                     <Icon name=IconName::CHEVRON_RIGHT size=14 />
                 </button>
@@ -95,7 +95,7 @@ pub fn Pagination(
                 <span class="c-pagination__summary" aria-live="polite" aria-atomic="true">
                     {move || fill(
                         t().page_status_fmt,
-                        &[("page", &current().to_string()), ("total", &total.to_string())],
+                        &[("page", &current().to_string()), ("total", &total().to_string())],
                     )}
                 </span>
             </div>

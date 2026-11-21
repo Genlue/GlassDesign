@@ -29,6 +29,10 @@ const consts = entries
   .map((e) => `    pub const ${e.constName}: Self = Self("${e.name}");`)
   .join('\n');
 
+const lookups = entries
+  .map((e) => `            "${e.name}" => Self::${e.constName},`)
+  .join('\n');
+
 const arms = entries
   .map((e) => `        "${e.name}" => r#"${e.path}"#,`)
   .join('\n');
@@ -49,6 +53,14 @@ impl IconName {
     /// 业务图标：直接给 24 视框的 path/circle/rect 片段（不含 <svg> 外壳）。
     pub const fn custom(markup: &'static str) -> Self {
         Self(markup)
+    }
+
+    /// Looks up a built-in icon by its kebab-case key; never accepts custom SVG markup.
+    pub fn lookup(key: &str) -> Option<Self> {
+        Some(match key {
+${lookups}
+            _ => return None,
+        })
     }
 
     pub fn path(self) -> &'static str {

@@ -6,6 +6,7 @@
   display: flex;
   align-items: center;
   gap: var(--ctl-gap, var(--s-3));
+  min-width: 0;
   height: var(--ctl-h, 28px);
   padding: 0 var(--ctl-pad, var(--s-4));
   border-radius: var(--ctl-r, var(--r-sm));

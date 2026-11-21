@@ -263,7 +263,7 @@ pub fn watch(
     }
 
     // 面板自身变高/变宽（例如过滤后条目变少）也要重摆一次。
-    let observer = ResizeObserverHandle::new(panel.clone(), {
+    let observer = ResizeObserverHandle::new([panel], {
         let pump = pump.clone();
         move || pump()
     });
@@ -279,13 +279,16 @@ pub fn watch(
 /// 这里用 `Reflect` 取构造器而不是 `web_sys::ResizeObserver`：`控件/Cargo.toml` 的
 /// web-sys 特性表是刻意收窄的（多个组件族共用），为这一处再加特性不值当。环境不支持
 /// 时静默退化为「只在滚动/resize 时重算」。
-struct ResizeObserverHandle {
+pub(crate) struct ResizeObserverHandle {
     observer: JsValue,
     closure: Closure<dyn FnMut()>,
 }
 
 impl ResizeObserverHandle {
-    fn new(target: web_sys::HtmlElement, on_change: impl FnMut() + 'static) -> Option<Self> {
+    pub(crate) fn new(
+        targets: impl IntoIterator<Item = web_sys::HtmlElement>,
+        on_change: impl FnMut() + 'static,
+    ) -> Option<Self> {
         let window = web_sys::window()?;
         let ctor = js_sys::Reflect::get(&window, &JsValue::from_str("ResizeObserver")).ok()?;
         if !ctor.is_function() {
@@ -300,7 +303,9 @@ impl ResizeObserverHandle {
         .ok()?;
         let observe: js_sys::Function =
             js_sys::Reflect::get(&observer, &JsValue::from_str("observe")).ok()?.unchecked_into();
-        let _ = observe.call1(&observer, target.unchecked_ref());
+        for target in targets {
+            let _ = observe.call1(&observer, target.unchecked_ref());
+        }
         Some(Self { observer, closure })
     }
 }

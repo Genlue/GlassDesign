@@ -2,10 +2,10 @@
 
 fn main() {
     tauri::Builder::default()
-        // 截屏命令由 host crate 提供；`handlers!` 里已经展开成 generate_handler!。
+        // 注册兼容宿主命令；`handlers!` 保留以兼容既有调用方式。
         .invoke_handler(glass_design_host::handlers!())
         .setup(|app| {
-            // 挂 WDA_EXCLUDEFROMCAPTURE：否则截到的「桌面」里包含自己（镜中镜）。
+            // 宿主初始化（保留兼容性；不再挂 WDA_EXCLUDEFROMCAPTURE）。
             glass_design_host::install(app.handle())?;
             Ok(())
         })

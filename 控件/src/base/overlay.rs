@@ -204,7 +204,8 @@ impl OverlayHost {
     pub fn remove(&self, id: OverlayId) {
         let entry = self
             .entries
-            .with_untracked(|list| list.iter().find(|e| e.id == id).cloned());
+            .try_with_untracked(|list| list.iter().find(|e| e.id == id).cloned())
+            .flatten();
         let Some(entry) = entry else {
             return;
         };
@@ -226,7 +227,9 @@ impl OverlayHost {
     }
 
     pub fn is_open(&self, id: OverlayId) -> bool {
-        self.entries.with_untracked(|list| list.iter().any(|e| e.id == id))
+        self.entries
+            .try_with_untracked(|list| list.iter().any(|e| e.id == id))
+            .unwrap_or(false)
     }
 
     pub fn is_top(&self, id: OverlayId) -> bool {

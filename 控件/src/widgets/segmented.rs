@@ -2,6 +2,7 @@ use leptos::html;
 use leptos::prelude::*;
 use wasm_bindgen::JsCast;
 
+use crate::base::anchor::ResizeObserverHandle;
 use crate::base::icon::{Icon, IconName};
 use crate::base::overlay::schedule;
 
@@ -45,6 +46,7 @@ pub fn Segmented(
     #[prop(into, optional)] value: MaybeProp<String>,
     #[prop(optional)] on_change: Option<Callback<String>>,
     #[prop(optional)] size: SegmentedSize,
+    #[prop(into, optional)] label: String,
 ) -> impl IntoView {
     let cls = if size == SegmentedSize::Lg {
         "c-seg c-seg--lg"
@@ -58,29 +60,39 @@ pub fn Segmented(
     // 把选中块摆到当前选中项上。选中项变了要重摆，窗口宽度变了也要重摆
     // （同一个值在窄窗口里可能换行，几何就全变了）。
     let place = move || {
-        let (Some(root), Some(ind)) = (root_ref.get_untracked(), ind_ref.get_untracked()) else {
+        let (Some(root), Some(ind)) = (
+            root_ref.try_get_untracked().flatten(),
+            ind_ref.try_get_untracked().flatten(),
+        ) else {
             return;
         };
-        let Ok(Some(opt)) = root.query_selector(".c-seg__opt[aria-checked=\"true\"]") else {
-            return;
-        };
-        let rb = root.get_bounding_client_rect();
-        let ob = opt.get_bounding_client_rect();
-        if ob.width() == 0.0 && ob.height() == 0.0 {
+        if !root.is_connected() {
             return;
         }
-        let style: web_sys::HtmlElement = ind.unchecked_into();
-        let style = style.style();
+        let ind: web_sys::HtmlElement = ind.unchecked_into();
+        let style = ind.style();
+        let Ok(Some(opt)) = root.query_selector(".c-seg__opt[aria-checked=\"true\"]") else {
+            let _ = style.set_property("width", "0px");
+            let _ = ind.class_list().add_1("is-static");
+            return;
+        };
+        let opt: web_sys::HtmlElement = opt.unchecked_into();
+        // Geometry in the indicator's containing block, not viewport-scaled rects.
+        let (width, height) = (opt.offset_width(), opt.offset_height());
+        if width == 0 || height == 0 {
+            return;
+        }
         let _ = style.set_property(
             "transform",
-            &format!(
-                "translate({}px, {}px)",
-                ob.left() - rb.left(),
-                ob.top() - rb.top()
-            ),
+            &format!("translate({}px, {}px)", opt.offset_left(), opt.offset_top()),
         );
-        let _ = style.set_property("width", &format!("{}px", ob.width()));
-        let _ = style.set_property("height", &format!("{}px", ob.height()));
+        let _ = style.set_property("width", &format!("{width}px"));
+        let _ = style.set_property("height", &format!("{height}px"));
+        // Commit the first position without animating from a zero-width block.
+        if ind.class_list().contains("is-static") {
+            let _ = ind.offset_width();
+            let _ = ind.class_list().remove_1("is-static");
+        }
     };
 
     Effect::new(move |_| {
@@ -90,10 +102,27 @@ pub fn Segmented(
         schedule(place);
     });
 
-    // 尺寸监听挂在 window 上（控件本身没有 ResizeObserver 依赖，
-    // 而且真正会变的是外层容器宽度 —— 胶囊宽度由内容决定）。
+    // Track option sizes as well as the container: a font or host CSS change
+    // can move the selected option without resizing the outer track.
+    Effect::new(move |_| {
+        let Some(root) = root_ref.get() else { return };
+        let mut targets = vec![root.clone().unchecked_into::<web_sys::HtmlElement>()];
+        if let Ok(options) = root.query_selector_all(".c-seg__opt") {
+            for i in 0..options.length() {
+                if let Some(option) = options.item(i) {
+                    targets.push(option.unchecked_into());
+                }
+            }
+        }
+        if let Some(observer) = ResizeObserverHandle::new(targets, place) {
+            let observer = StoredValue::new_local(Some(observer));
+            on_cleanup(move || observer.set_value(None));
+        }
+    });
+
+    // Keep resize handling for environments without ResizeObserver.
     let listener = window_event_listener(leptos::ev::resize, move |_| place());
-    on_cleanup(move || drop(listener));
+    on_cleanup(move || listener.remove());
 
     let buttons = options.into_iter().map(|opt| {
         let value_for_state = opt.value.clone();
@@ -133,6 +162,14 @@ pub fn Segmented(
                         let next = (i as isize + step).rem_euclid(options.len() as isize) as usize;
                         if let Some(cb) = on_change {
                             cb.run(options[next].value.clone());
+                            if let Some(root) = root_ref.try_get_untracked().flatten() {
+                                if let Some(button) = root.query_selector_all(".c-seg__opt").ok()
+                                    .and_then(|buttons| buttons.item(next as u32))
+                                    .and_then(|node| node.dyn_into::<web_sys::HtmlElement>().ok())
+                                {
+                                    let _ = button.focus();
+                                }
+                            }
                         }
                     }
                 }
@@ -147,6 +184,7 @@ pub fn Segmented(
         <div
             class=cls
             role="radiogroup"
+            aria-label=(!label.is_empty()).then_some(label)
             data-value=move || value.get().unwrap_or_default()
             node_ref=root_ref
         >
@@ -154,7 +192,7 @@ pub fn Segmented(
             // CSS 只给形状，几何（x / y / 宽 / 高）必须实测后写进内联样式 ——
             // 选项宽度随文案变，写死任何一个数都会在中文/英文之间错位。
             // **少了这一层，选中项只剩 `--text-on-accent` 的白字，浅色主题下直接消失。**
-            <span class="c-seg__ind" node_ref=ind_ref></span>
+            <span class="c-seg__ind is-static" node_ref=ind_ref></span>
             {buttons}
         </div>
     }

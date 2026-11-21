@@ -16,14 +16,9 @@
      ========================================================================== */
 
   /* ① 背景层。**它不是装饰，是输入。**
-     #wallpaper 是页面最底层的一张「桌面快照」：
-       · data-source="host"   → Tauri 实时截取窗口背后的屏幕，data URL 写进 --wallpaper-image
-       · data-source="demo"   → 浏览器预览的替身（合成桌面）
+     #wallpaper 是页面最底层的内置合成渐变背景（data-source="demo" / tokens.css 的 --wallpaper）。
      玻璃（胶囊 / 侧栏 / 卡片）折的就是这一层。所以内容面必须留一点透光，
      否则 backdrop-filter 采到的永远是纯色 —— 那正是上一版「没有玻璃味」的根因。 */
-  #wallpaper[data-source="host"] {
-    background: var(--wallpaper-image) center / cover no-repeat;
-  }
   #wallpaper[data-source="demo"] {
     background:
       radial-gradient(1100px 760px at 16% 8%, rgb(122 92 214 / 0.85), transparent 62%),

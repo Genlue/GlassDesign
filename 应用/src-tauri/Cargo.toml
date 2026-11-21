@@ -10,5 +10,5 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-# 宿主胶水：截屏命令 + 窗口隐藏 + 壁纸脚本，细节都在这个 crate 里。
+# 宿主胶水：壳层接线与壁纸脚本，细节都在这个 crate 里。
 glass-design-host = { path = "../../host" }

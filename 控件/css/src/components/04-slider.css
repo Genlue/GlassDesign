@@ -9,9 +9,10 @@
 
 .c-slider {
   --p: 0;
-  /* 拇指长宽比固定 3:2，宽度由高度推出来 —— 常规滑块和有级滑块共用同一个比例，
-     不会再出现 28×16（1.75）和 36×18（2.0）两种长宽比。改大小只改 --thumb-h。 */
-  --thumb-h: 16px;
+  /* 拇指长宽比固定 3:2（基准 24×16，与静态 SVG 滤镜 #gd-glass-thumb 逐像素对齐）。
+     改大小优先改 --thumb-scale（无单位缩放比，--thumb-h / --thumb-w 同步派生）。 */
+  --thumb-scale: 1;
+  --thumb-h: calc(16px * var(--thumb-scale));
   --thumb-ratio: 1.5;
   --thumb-w: calc(var(--thumb-h) * var(--thumb-ratio));
   --thumb-s: 1;
@@ -45,9 +46,11 @@
 /* 轨道：内侧凹陷，比表面低一层 */
 .c-slider__track {
   position: absolute;
+  top: 50%;
   left: calc(var(--thumb-w) / 2);
   right: calc(var(--thumb-w) / 2);
   height: 8px;
+  transform: translateY(-50%);
   border-radius: var(--r-pill);
   background: var(--surface-control-active);
   box-shadow: inset 0 0.5px 1.5px rgb(0 0 0 / calc(0.18 * var(--shadow-k))), inset 0 -0.5px 0 rgb(255 255 255 / 0.45);
@@ -60,7 +63,7 @@
 .c-slider__fill {
   position: absolute;
   inset: 0 auto 0 0;
-  width: calc(100% * var(--p) + 6px * var(--rf, 1));
+  width: calc(100% * var(--p) + var(--thumb-h) * 0.375 * var(--rf, 1));
   border-radius: 0 var(--r-pill) var(--r-pill) 0;
   background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 76%, #fff), var(--accent));
   box-shadow: inset 0 0.5px 0 rgb(255 255 255 / 0.40);
@@ -100,16 +103,20 @@
      才没露馅。把位移拆到独立的 `translate` 属性后，那条覆盖就管不住它了，
      于是 left 和 translate 各推一次，拇指跑到填充前面一大截 —— 别走回头路。 */
   left: calc(var(--thumb-w) / 2 + (100% - var(--thumb-w)) * var(--p));
-  width: var(--thumb-w);
-  height: var(--thumb-h);
-  margin-top: calc(var(--thumb-h) / -2);
-  margin-left: calc(var(--thumb-w) / -2);
-  border-radius: calc(var(--thumb-h) / 2);
+  /* 布局盒始终为 24×16（与 #gd-glass-thumb 位移贴图严格 1:1），
+     通过独立 translate: -50% -50% 严格锁死中心点到 (left, 50%)，
+     避免 63-glass-svg.css 覆盖宽高后 margin-top/left 与实际尺寸错配导致偏移。 */
+  width: 24px;
+  height: 16px;
+  translate: -50% -50%;
+  border-radius: var(--r-pill);
   /* 必须裁剪：高光层是小圆角矩形，不裁剪会在药丸圆角外露出直角 */
   overflow: hidden;
-  /* 三层：焦散弧 → 折射蓝弧 → 底部透镜聚色
+  /* 三层：焦散弧 → 折射色弧 → 底部透镜聚色
      折射用「以左侧为圆心的径向渐变」，它画出来的是弧，不是直线；
-     直线渐变会在玻璃里留下一条竖直硬边，正是「分界平直」的来源。 */
+     直线渐变会在玻璃里留下一条竖直硬边，正是「分界平直」的来源。
+     颜色优先读 --slider-fill-rgb（默认回落到 --accent-rgb），
+     自定义白/浅色进度条时拇指折射色不会继续伪装成主题强调色。 */
   background:
     /* 基础涂层：与其它七个面同一套 coating/coatingColor，0 = 完全无白膜。
        原生接管时 [data-glass] 会整层清掉，不再与滤镜的 flood 叠加。 */
@@ -125,13 +132,13 @@
     ),
     radial-gradient(
       115% 150% at 4% 50%,
-      rgb(var(--accent-rgb) / calc(0.5 * var(--lg-amount-k) * var(--rf, 1))) 0%,
-      rgb(var(--accent-rgb) / calc(0.42 * var(--lg-amount-k) * var(--rf, 1))) 38%,
-      rgb(var(--accent-rgb) / 0) 56%
+      rgb(var(--slider-fill-rgb, var(--accent-rgb)) / calc(0.5 * var(--lg-amount-k) * var(--rf, 1))) 0%,
+      rgb(var(--slider-fill-rgb, var(--accent-rgb)) / calc(0.42 * var(--lg-amount-k) * var(--rf, 1))) 38%,
+      rgb(var(--slider-fill-rgb, var(--accent-rgb)) / 0) 56%
     ),
     radial-gradient(
       130% 115% at 50% 120%,
-      rgb(var(--accent-rgb) / calc(0.5 * var(--lg-amount-k))),
+      rgb(var(--slider-fill-rgb, var(--accent-rgb)) / calc(0.5 * var(--lg-amount-k))),
       transparent 64%
     );
   backdrop-filter: blur(var(--thumb-blur-px))
@@ -162,10 +169,11 @@
     inset 0 1px 0 rgb(255 255 255 / calc(0.95 * var(--lg-css-stroke-alpha, var(--lg-stroke-alpha)))),
     inset 0 -1px 0 rgb(255 255 255 / calc(0.95 * var(--lg-css-stroke-alpha, var(--lg-stroke-alpha)) * var(--hl-bottom))),
     inset 0 -1px 2px rgb(0 0 0 / calc(0.12 * var(--shadow-k)));
-  /* 位置由上面的 `left` 百分比表达式负责，这里只做缩放。
+  /* 位置由上面的 `left` 与 `translate: -50% -50%` 负责，这里只做缩放（基础档位 × 按压弹放）。
      缩放留在 transform 上才有过渡；位移不放进 transform 是因为那条
      200ms 的按压过渡会连位移一起缓动（拖拽时每帧重起一次，拇指追不上指针）。 */
-  transform: scale(var(--thumb-s, 1));
+  transform-origin: 50% 50%;
+  transform: scale(calc(var(--thumb-s, 1) * var(--thumb-scale, 1)));
   will-change: transform;
 }
 

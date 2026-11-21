@@ -12,9 +12,8 @@
 </style>
 </head>
 <body>
-  <!-- 玻璃折的就是这一层。宿主（glass-design-host）会把实时截屏写进
-       --wallpaper-image；在浏览器里直接看时没有宿主，用 tokens.css 的默认壁纸。 -->
-  <div id="wallpaper"></div>
+  <!-- 玻璃折的就是这一层：使用 tokens.css 内置的合成渐变壁纸（--wallpaper）。 -->
+  <div id="wallpaper" data-source="demo"></div>
 
   <!-- bootstrap() 把根组件挂到 body，不需要容器。这个空 div 留给
        「不用 bootstrap、改 mount_to(#app, App)」的写法，默认是空节点。 -->
@@ -27,10 +26,9 @@
     await init();
   </script>
 
-  <!-- 壁纸接线：普通 script（不是 module），页面解析到这里就执行，
-       早于上面 deferred 的 module —— 玻璃挂载前 --wallpaper-image 已就位。
-       宿主里它调 capture_backdrop 把桌面写进 #wallpaper；浏览器里什么都不做。
-       需要 tauri.conf.json 的 app.withGlobalTauri 才能拿到 window.__TAURI__。 -->
+  <!-- 宿主壳层与壁纸接线：普通 script（不是 module），页面解析到这里就执行。
+       在 Tauri 宿主里写入 data-shell="host"（.l-app 贴满窗口）并保持合成壁纸；
+       需要 tauri.conf.json 的 app.withGlobalTauri 为 true 才能拿到 window.__TAURI__。 -->
   <script src="wallpaper.js"></script>
 </body>
 </html>

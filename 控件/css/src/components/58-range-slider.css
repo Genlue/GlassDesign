@@ -143,13 +143,13 @@
     ),
     radial-gradient(
       115% 150% at 4% 50%,
-      rgb(var(--accent-rgb) / calc(0.5 * var(--lg-amount-k) * var(--rf, 1))) 0%,
-      rgb(var(--accent-rgb) / calc(0.42 * var(--lg-amount-k) * var(--rf, 1))) 38%,
-      rgb(var(--accent-rgb) / 0) 56%
+      rgb(var(--slider-fill-rgb, var(--accent-rgb)) / calc(0.5 * var(--lg-amount-k) * var(--rf, 1))) 0%,
+      rgb(var(--slider-fill-rgb, var(--accent-rgb)) / calc(0.42 * var(--lg-amount-k) * var(--rf, 1))) 38%,
+      rgb(var(--slider-fill-rgb, var(--accent-rgb)) / 0) 56%
     ),
     radial-gradient(
       130% 115% at 50% 120%,
-      rgb(var(--accent-rgb) / calc(0.5 * var(--lg-amount-k))),
+      rgb(var(--slider-fill-rgb, var(--accent-rgb)) / calc(0.5 * var(--lg-amount-k))),
       transparent 64%
     );
   backdrop-filter: blur(var(--thumb-blur-px)) saturate(calc(var(--lg-vibrancy) * 100%));

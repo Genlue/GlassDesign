@@ -106,7 +106,8 @@
       把 background 置空），光晕直接落到玻璃上，浅色主题下看起来像
       「蓝色选中块胀出胶囊左缘」。胶囊里只保留一圈贴地的环境影。
    -------------------------------------------------------------------------- */
-.c-capsule > .c-seg .c-seg__ind {
+.c-capsule > .c-seg .c-seg__ind,
+.c-capsule > [data-gd-widget="segmented"] > .c-seg .c-seg__ind {
   box-shadow:
     inset 0 0.5px 0 rgb(255 255 255 / 0.28),
     0 0.5px 1.5px rgb(0 0 0 / calc(0.18 * var(--shadow-k)));

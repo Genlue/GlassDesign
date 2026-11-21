@@ -30,6 +30,7 @@ pub mod prelude {
     pub use crate::base::theme::{Theme, ThemeMode};
     pub use crate::base::types::Size;
 
+    pub use crate::widgets::audio_spectrum::{AudioSpectrum, SpectrumSize};
     pub use crate::widgets::avatar::{Avatar, AvatarSize, AvatarStatus};
     pub use crate::widgets::badge::{Badge, BadgeVariant};
     pub use crate::widgets::breadcrumb::{Breadcrumb, Crumb};
@@ -42,6 +43,7 @@ pub mod prelude {
         CollectionItem, CollectionLayout, CollectionView,
     };
     pub use crate::widgets::combobox::{Combobox, ComboboxOption};
+    pub use crate::widgets::cover_art::{CoverArt, CoverArtSize};
     pub use crate::widgets::data_table::{
         CellEdit, ColAlign, DataColumn, DataTable, DataTableRow, SortSpec,
     };
@@ -57,6 +59,8 @@ pub mod prelude {
     pub use crate::widgets::inline_message::{InlineMessage, Tone};
     pub use crate::widgets::inspector::{Inspector, Outline, OutlineItem, PropList, PropRow};
     pub use crate::widgets::list::{List, ListItem, ListSelection};
+    pub use crate::widgets::lyric_view::{LyricLine, LyricView};
+    pub use crate::widgets::media_icons::media_icons;
     pub use crate::widgets::media_tile::MediaTile;
     pub use crate::widgets::menu::{Menu, MenuButton, MenuItem};
     pub use crate::widgets::nav_card::NavCard;
@@ -65,6 +69,7 @@ pub mod prelude {
     pub use crate::widgets::nav_search::NavSearch;
     pub use crate::widgets::number_field::NumberField;
     pub use crate::widgets::pagination::Pagination;
+    pub use crate::widgets::player_bar::{PlayMode, PlayerBar, PlayerTrackInfo};
     pub use crate::widgets::popover::{Popover, PopoverPlacement};
     pub use crate::widgets::progress::{
         Empty, Progress, ProgressRing, RingSize, Skeleton, Spinner,
@@ -78,6 +83,7 @@ pub mod prelude {
     pub use crate::widgets::selection::SelectionMode;
     pub use crate::widgets::sheet::{Sheet, SheetSize};
     pub use crate::widgets::slider::Slider;
+    pub use crate::widgets::split_grip::SplitGrip;
     pub use crate::widgets::split_view::{SplitOrientation, SplitView};
     pub use crate::widgets::status_bar::{StatusBar, StatusItem, StatusProgress, StatusTone};
     pub use crate::widgets::stepper::{Stepper, StepperOrientation};
@@ -88,6 +94,7 @@ pub mod prelude {
     pub use crate::widgets::tile::Tile;
     pub use crate::widgets::toast::{toast, toast_with, ToastHost, ToastItem};
     pub use crate::widgets::tooltip::{Tooltip, TooltipPlacement};
+    pub use crate::widgets::track_list::{TrackItem, TrackList};
     pub use crate::widgets::traffic_lights::TrafficLights;
     pub use crate::widgets::token_field::TokenField;
     pub use crate::widgets::toolbar_customization::{ToolbarCustomization, ToolbarField};
@@ -101,7 +108,8 @@ pub mod prelude {
     };
     pub use crate::layout::surfaces::{Card, Divider, Row, SectionTitle};
     pub use crate::layout::toolbar::{
-        Capsule, CapsuleSize, Toolbar, ToolbarChrome, ToolbarLead, ToolbarPills, ToolbarTitle,
+        Capsule, CapsuleSize, NavPair, Toolbar, ToolbarChrome, ToolbarLead, ToolbarPills,
+        ToolbarTitle,
     };
 }
 

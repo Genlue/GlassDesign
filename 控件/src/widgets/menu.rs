@@ -182,11 +182,19 @@ fn focus_item(el: &web_sys::HtmlElement) {
     let _ = el.focus();
 }
 
-/// 打开菜单时焦点落在第一个可用项（不是容器）：
-/// 容器虽然带 tabindex="-1"，但焦点停在容器上时读屏不会念出任何一项，
-/// 用户还得先按一次 ↓ 才知道菜单里有什么。
+/// 打开菜单时优先聚焦已勾选/已选中的项，若无则落在第一个可用项（不是容器）：
+/// 1. 单选/多选类菜单（如多仓库切换）有 checked 状态时，应当聚焦当前已选中的那一项，
+///    而不是误高亮第一项让人以为默认选了第一个。
+/// 2. 容器虽然带 tabindex="-1"，但焦点停在容器上时读屏不会念出任何一项，
+///    用户还得先按一次 ↓ 才知道菜单里有什么。
 fn focus_first_item(panel: &web_sys::HtmlElement) {
-    if let Some(el) = enabled_items(panel).first() {
+    let items = enabled_items(panel);
+    if let Some(selected) = items.iter().find(|el| {
+        el.get_attribute("aria-checked").as_deref() == Some("true")
+            || el.get_attribute("aria-selected").as_deref() == Some("true")
+    }) {
+        focus_item(selected);
+    } else if let Some(el) = items.first() {
         focus_item(el);
     }
 }
@@ -498,6 +506,7 @@ fn build_panel(
                 return;
             }
             let Some(el) = target_html(ev.unchecked_ref()) else { return };
+            focus_item(&el);
             close_other_subs(links_store, Some(index));
             let Some(link) = link else { return };
             if let Some(id) = hover_timer.get_value() {
@@ -792,6 +801,10 @@ fn build_panel(
                 node_ref=panel_ref
                 style=panel_style
                 on:keydown=on_key
+                on:contextmenu=move |ev: web_sys::MouseEvent| {
+                    ev.prevent_default();
+                    ev.stop_propagation();
+                }
             >
                 {body_store.try_update_value(|b| b.take()).flatten()}
             </div>
@@ -1005,12 +1018,26 @@ fn menu_core(
     );
 
     Effect::new(move |_| {
+        // 坐标右键菜单（`!focus_first`）每次坐标变化都要重新落位，且不抢占当前焦点元素当锚点。
+        let coords_now = match trigger {
+            TriggerSource::Coords(c) if !focus_first => Some(c.get().unwrap_or((0.0, 0.0, 0.0))),
+            _ => None,
+        };
         if is_open() {
             let el: Option<web_sys::HtmlElement> = match trigger {
                 TriggerSource::Element(r) => r.get().map(|b| b.into()),
-                TriggerSource::Coords(_) => active_element(),
+                TriggerSource::Coords(_) => {
+                    if focus_first {
+                        active_element()
+                    } else {
+                        None
+                    }
+                }
             };
             trigger_el.set_value(el);
+            if coords_now.is_some() {
+                drop_ghost(ghost);
+            }
             // 打开前的焦点就是「触发器」：菜单不是模态，归还只能自己做。
             // 只在第一次入栈时记录 —— effect 若因 anchor 变化重跑，焦点已经在菜单里了。
             if return_to.get_value().is_none() {
@@ -1060,7 +1087,7 @@ fn menu_core(
             // 等一帧：面板的 style 闭包（`left:-10000px;visibility:hidden`）先落定，
             // 这时才量得到真实宽高，也才轮得到 `apply` 写坐标。
             schedule(move || {
-                if !is_open() {
+                if open.try_get_untracked() != Some(true) {
                     return;
                 }
                 let Some(panel) = panel_ref.get() else { return };
@@ -1071,7 +1098,9 @@ fn menu_core(
                 }
                 if anchor_el.is_none() {
                     let coords = match trigger {
-                        TriggerSource::Coords(c) => c.get().unwrap_or((0.0, 0.0, 0.0)),
+                        TriggerSource::Coords(c) => {
+                            coords_now.unwrap_or_else(|| c.get().unwrap_or((0.0, 0.0, 0.0)))
+                        }
                         TriggerSource::Element(_) => return,
                     };
                     anchor_el = ghost_anchor(coords);
@@ -1115,7 +1144,7 @@ fn menu_core(
             if restore.get_value() {
                 if let Some(el) = return_to.get_value() {
                     schedule(move || {
-                        let own = panel_ref.get().map(|p| p.unchecked_into::<web_sys::Node>());
+                        let own = panel_ref.try_get_untracked().flatten().map(|p| p.unchecked_into::<web_sys::Node>());
                         if el.is_connected() && focus_is_free(own.as_ref()) {
                             let _ = el.focus();
                         }

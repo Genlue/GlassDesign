@@ -83,7 +83,7 @@ html[data-shell="host"] .l-app {
   position: absolute;
   inset: 0 auto 0 0;
   width: var(--nav-w);
-  z-index: 2;
+  z-index: 8;
   border-radius: inherit;
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
@@ -113,7 +113,7 @@ html[data-shell="host"] .l-app {
   width: var(--nav-w);
   min-width: var(--nav-w);
   overflow: hidden;
-  z-index: 1;
+  z-index: 8;
   transform: translateX(0);
   transition: transform var(--nav-dur) var(--nav-ease), visibility 0s;
   will-change: transform;
@@ -122,12 +122,14 @@ html[data-shell="host"] .l-app {
 /* 侧边形态：导航栏是**覆盖层**，不占列。
    占列的话，收起就必须改列宽，而列宽是布局属性 —— 重排 + 重绘每帧一次，
    帧率必然掉，而且它和 transform 不在同一条时间线上，中途会裂开。
-   做成覆盖层之后，内容列只认 margin-left，动画期间一次都不重排。 */
+   做成覆盖层之后，内容列只认 margin-left，动画期间一次都不重排。
+   z-index 必须高于内容区元素（.l-stage 1 / .c-topveil 2 / .c-wave 4 / .c-resizer 6），
+   同时低于顶栏 .c-topbar（10），展开/收起滑行时才不会被右侧内容区遮挡。 */
 .l-app > .l-nav,
 .l-app > .l-sidebar {
   position: absolute;
   inset: 0 auto 0 0;
-  z-index: 1;
+  z-index: 8;
 }
 
 .l-app--nav-hidden > .l-nav,
@@ -184,11 +186,8 @@ html[data-shell="host"] .l-app {
    曾经的做法是给顶栏算一个 padding-left = 红绿灯 + 开关 + 间距：
    那是把布局写成了算术，开关一隐藏，算出来的位置就过期了。 */
 .l-app {
-  --topbar-pad-l: var(--s-7);   /* 16 */
-  --topbar-pad-r: var(--s-6);   /* 12 */
-  /* 唯一的横向节奏：红绿灯↔开关、开关↔标题组、胶囊↔胶囊，全是它。
-     要松要紧只改这一个数，四处一起动。 */
-  --topbar-gap: var(--s-7);     /* 16 */
+  /* --topbar-pad-l / --topbar-pad-r / --topbar-gap 定义在 tokens.css 的
+     :root 上：宿主不套 .l-app 也要拿到同一套横向节奏。 */
   /* 都是推出来的，不写死：改 --tl-dot / --tl-gap / --capsule-h 会自动跟上 */
   --chrome-lights-w: calc(3 * var(--tl-dot) + 2 * var(--tl-gap));
   --chrome-btn-w: var(--capsule-h);
@@ -310,8 +309,10 @@ html[data-shell="host"] .l-app {
 .l-stack {
   display: flex;
   flex-direction: column;
+  gap: var(--s-5);
 }
 
+.l-stack--0 { gap: 0; }
 .l-stack--2 { gap: var(--s-2); }
 .l-stack--3 { gap: var(--s-3); }
 .l-stack--4 { gap: var(--s-4); }
@@ -323,9 +324,11 @@ html[data-shell="host"] .l-app {
 .l-row {
   display: flex;
   align-items: center;
+  gap: var(--s-4);
   min-width: 0;
 }
 
+.l-row--0 { gap: 0; }
 .l-row--2 { gap: var(--s-2); }
 .l-row--3 { gap: var(--s-3); }
 .l-row--4 { gap: var(--s-4); }

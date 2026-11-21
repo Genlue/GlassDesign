@@ -121,7 +121,7 @@ pub fn Select(
         schedule(move || {
             // 这一帧里可能已经关了（快速开→关）：别再建一个新的跟随句柄，
             // 否则关闭后监听器还活着，下一个滚动事件又会把它摆回来。
-            if !open.get_untracked() {
+            if open.try_get_untracked() != Some(true) {
                 return;
             }
             if !anchor_el.is_connected() || !panel.is_connected() {

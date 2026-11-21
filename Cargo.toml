@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["控件", "host", "应用/ui", "应用/src-tauri"]
+members = ["控件", "host", "应用/ui", "应用/src-tauri", "web"]
 # 模板是给用户拷出去用的，不属于本工作区。
 #
 # 光靠这一行不够：cargo 处理 **git 依赖**时会递归扫检出目录里所有名为

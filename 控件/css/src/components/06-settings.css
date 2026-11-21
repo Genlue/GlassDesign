@@ -87,3 +87,12 @@
   min-width: 0;
   max-width: 420px;
 }
+
+/* 宽控件槽里常放 `<Cluster><Fill><Field /></Fill><Button /></Cluster>`：
+   直接子级需要吃满槽宽并允许收缩，否则输入框会被内容/占位符压窄。 */
+.c-row__control--wide > .l-row,
+.c-row__control--wide > .c-field,
+.c-row__control--wide > .c-textarea {
+  flex: 1 1 auto;
+  min-width: 0;
+}

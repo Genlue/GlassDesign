@@ -1,13 +1,13 @@
-// 宿主入口。窗口不透明、无边框：桌面像素由 host crate 截下来画进 #wallpaper，
-// 不是靠窗口透明透出来的 —— backdrop-filter 采不到窗口外的像素。
+// 宿主入口。窗口不透明、无边框：液态玻璃折的是页面底层的合成渐变 #wallpaper，
+// 不需要透明窗口，也不做桌面截屏或 WDA_EXCLUDEFROMCAPTURE。
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
     tauri::Builder::default()
-        // 截屏命令由 host crate 提供，`handlers!` 展开成 generate_handler!。
+        // 注册兼容宿主命令（`handlers!` 保留，避免破坏现有接线）。
         .invoke_handler(glass_design_host::handlers!())
         .setup(|app| {
-            // 给窗口挂 WDA_EXCLUDEFROMCAPTURE，否则截到的「桌面」里包含自己。
+            // 宿主初始化（保留兼容性；不再挂 WDA_EXCLUDEFROMCAPTURE）。
             glass_design_host::install(app.handle())?;
             Ok(())
         })
